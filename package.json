@@ -1,0 +1,15 @@
+{
+  "name": "cordova-camera-preview",
+  "version": "0.0.9",
+  "description": "Forked from GitHub(https://github.com/mbppower/CordovaCameraPreview). Published for testing integration specifically targeting the Meteor JavaScript App Platform. Use at your own Risk.",
+  "author": "clariontools",
+  "keywords": [
+      "ecosystem:cordova",
+      "cordova-android",
+      "cordova-ios"
+    ],
+  "contributors": [{
+  "name": "Andy Kaczmarczyk",
+  "email": "andy@clariontools.com"
+}]
+}

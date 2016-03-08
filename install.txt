@@ -1,2 +1,2 @@
-cordova plugin rm com.mbppower.camerapreview
+cordova plugin rm com.clariontools.camerapreview
 cordova plugin add ../CordovaCameraPreview

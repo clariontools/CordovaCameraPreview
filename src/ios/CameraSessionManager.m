@@ -4,189 +4,232 @@
 
 - (CameraSessionManager *)init
 {
-        if (self = [super init]) {
-                // Create the AVCaptureSession
-                self.session = [[AVCaptureSession alloc] init];
-                self.sessionQueue = dispatch_queue_create("session queue", DISPATCH_QUEUE_SERIAL);
-                self.filterLock = [[NSLock alloc] init];
-                [self setCiFilter:nil];
-        }
-        return self;
+    if (self = [super init]) {
+        // Create the AVCaptureSession
+        self.session = [[AVCaptureSession alloc] init];
+
+        self.sessionQueue = dispatch_queue_create("session queue", DISPATCH_QUEUE_SERIAL);
+        self.filterLock = [[NSLock alloc] init];
+        [self setCiFilter:nil];
+    }
+    return self;
 }
 - (AVCaptureVideoOrientation) getCurrentOrientation/*:(UIInterfaceOrientation)toInterfaceOrientation*/
 {
-        return [self getCurrentOrientation: [[UIApplication sharedApplication] statusBarOrientation]];
+    return [self getCurrentOrientation: [[UIApplication sharedApplication] statusBarOrientation]];
 }
 - (AVCaptureVideoOrientation) getCurrentOrientation:(UIInterfaceOrientation)toInterfaceOrientation
 {
-        AVCaptureVideoOrientation orientation;
-        switch (toInterfaceOrientation) {
+    AVCaptureVideoOrientation orientation;
+    switch (toInterfaceOrientation) {
         case UIInterfaceOrientationPortraitUpsideDown:
-                orientation = AVCaptureVideoOrientationPortraitUpsideDown;
-                break;
+            orientation = AVCaptureVideoOrientationPortraitUpsideDown;
+            break;
         case UIInterfaceOrientationLandscapeRight:
-                orientation = AVCaptureVideoOrientationLandscapeRight;
-                break;
+            orientation = AVCaptureVideoOrientationLandscapeRight;
+            break;
         case UIInterfaceOrientationLandscapeLeft:
-                orientation = AVCaptureVideoOrientationLandscapeLeft;
-                break;
+            orientation = AVCaptureVideoOrientationLandscapeLeft;
+            break;
         default:
         case UIInterfaceOrientationPortrait:
-                orientation = AVCaptureVideoOrientationPortrait;
-        }
-        return orientation;
+            orientation = AVCaptureVideoOrientationPortrait;
+    }
+    return orientation;
 }
 - (void) setupSession:(NSString *)defaultCamera
 {
-        // If this fails, video input will just stream blank frames
-        // and the user will be notified. User only has to accep once.
-        [self checkDeviceAuthorizationStatus];
-
-        dispatch_async(self.sessionQueue, ^{
-                NSError *error = nil;
-
-                NSLog(@"defaultCamera: %@", defaultCamera);
-                if ([defaultCamera isEqual: @"front"]) {
-                        self.defaultCamera = AVCaptureDevicePositionFront;
-                } else {
-                        self.defaultCamera = AVCaptureDevicePositionBack;
-                }
-
-                AVCaptureDevice *videoDevice = [CameraSessionManager deviceWithMediaType:AVMediaTypeVideo preferringPosition:self.defaultCamera];
-
-                if ([videoDevice hasFlash] && [videoDevice isFlashModeSupported:AVCaptureFlashModeAuto]) {
-                        if ([videoDevice lockForConfiguration:&error]) {
-                                [videoDevice setFlashMode:AVCaptureFlashModeAuto];
-                                [videoDevice unlockForConfiguration];
-                        } else {
-                                NSLog(@"%@", error);
-                        }
-                }
-
-                AVCaptureDeviceInput *videoDeviceInput = [AVCaptureDeviceInput deviceInputWithDevice:videoDevice error:&error];
-
-                if (error) {
-                        NSLog(@"%@", error);
-                }
-
-                if ([self.session canAddInput:videoDeviceInput]) {
-                        [self.session addInput:videoDeviceInput];
-                        self.videoDeviceInput = videoDeviceInput;
-                }
-
-                AVCaptureStillImageOutput *stillImageOutput = [[AVCaptureStillImageOutput alloc] init];
-                if ([self.session canAddOutput:stillImageOutput]) {
-                        [self.session addOutput:stillImageOutput];
-                        [stillImageOutput setOutputSettings:@{AVVideoCodecKey : AVVideoCodecJPEG}];
-                        self.stillImageOutput = stillImageOutput;
-                }
-
-                AVCaptureVideoDataOutput *dataOutput = [[AVCaptureVideoDataOutput alloc] init];
-                if ([self.session canAddOutput:dataOutput]) {
-                        self.dataOutput = dataOutput;
-                        [dataOutput setAlwaysDiscardsLateVideoFrames:YES];
-                        [dataOutput setVideoSettings:[NSDictionary dictionaryWithObject:[NSNumber numberWithInt:kCVPixelFormatType_32BGRA] forKey:(id)kCVPixelBufferPixelFormatTypeKey]];
-
-                        [dataOutput setSampleBufferDelegate:self.delegate queue:self.sessionQueue];
-
-                        [self.session addOutput:dataOutput];
-                }
-
-                [self updateOrientation:[self getCurrentOrientation]];
-        });
+    // If this fails, video input will just stream blank frames
+    // and the user will be notified. User only has to accept once.
+    [self checkDeviceAuthorizationStatus];
+    
+    dispatch_async(self.sessionQueue, ^{
+        NSError *error = nil;
+        
+        NSLog(@"defaultCamera: %@", defaultCamera);
+        if ([defaultCamera isEqual: @"front"]) {
+            self.defaultCamera = AVCaptureDevicePositionFront;
+        } else {
+            self.defaultCamera = AVCaptureDevicePositionBack;
+        }
+        
+        AVCaptureDevice *videoDevice = [CameraSessionManager deviceWithMediaType:AVMediaTypeVideo preferringPosition:self.defaultCamera];
+        
+        if ([videoDevice hasFlash] && [videoDevice isFlashModeSupported:AVCaptureFlashModeOff]) {
+            if ([videoDevice lockForConfiguration:&error]) {
+                [videoDevice setFlashMode:AVCaptureFlashModeOff];
+                [videoDevice unlockForConfiguration];
+            } else {
+                NSLog(@"Error during AV device setup: %@", error);
+            }
+        }
+        
+        AVCaptureDeviceInput *videoDeviceInput = [AVCaptureDeviceInput deviceInputWithDevice:videoDevice error:&error];
+        
+        if (error) {
+            NSLog(@"Error initializing camera: %@", error);
+        }
+        
+        if ([self.session canAddInput:videoDeviceInput]) {
+            [self.session addInput:videoDeviceInput];
+            self.videoDeviceInput = videoDeviceInput;
+        }
+        
+        AVCaptureStillImageOutput *stillImageOutput = [[AVCaptureStillImageOutput alloc] init];
+        if ([self.session canAddOutput:stillImageOutput]) {
+            [self.session addOutput:stillImageOutput];
+            [stillImageOutput setOutputSettings:@{AVVideoCodecKey : AVVideoCodecJPEG}];
+            self.stillImageOutput = stillImageOutput;
+        }
+        
+        AVCaptureVideoDataOutput *dataOutput = [[AVCaptureVideoDataOutput alloc] init];
+        if ([self.session canAddOutput:dataOutput]) {
+            self.dataOutput = dataOutput;
+            [dataOutput setAlwaysDiscardsLateVideoFrames:YES];
+            [dataOutput setVideoSettings:[NSDictionary dictionaryWithObject:[NSNumber numberWithInt:kCVPixelFormatType_32BGRA] forKey:(id)kCVPixelBufferPixelFormatTypeKey]];
+            
+            [dataOutput setSampleBufferDelegate:self.delegate queue:self.sessionQueue];
+            
+            [self.session addOutput:dataOutput];
+        }
+        
+        [self updateOrientation:[self getCurrentOrientation]];
+    });
 }
 - (void) updateOrientation:(AVCaptureVideoOrientation)orientation
 {
-        AVCaptureConnection *captureConnection;
-        if (self.stillImageOutput != nil) {
-                captureConnection = [self.stillImageOutput connectionWithMediaType:AVMediaTypeVideo];
-                if ([captureConnection isVideoOrientationSupported]) {
-                        [captureConnection setVideoOrientation:orientation];
-                }
+    AVCaptureConnection *captureConnection;
+    if (self.stillImageOutput != nil) {
+        captureConnection = [self.stillImageOutput connectionWithMediaType:AVMediaTypeVideo];
+        if ([captureConnection isVideoOrientationSupported]) {
+            [captureConnection setVideoOrientation:orientation];
         }
-        if (self.dataOutput != nil) {
-                captureConnection = [self.dataOutput connectionWithMediaType:AVMediaTypeVideo];
-                if ([captureConnection isVideoOrientationSupported]) {
-                        [captureConnection setVideoOrientation:orientation];
-                }
+    }
+    if (self.dataOutput != nil) {
+        captureConnection = [self.dataOutput connectionWithMediaType:AVMediaTypeVideo];
+        if ([captureConnection isVideoOrientationSupported]) {
+            [captureConnection setVideoOrientation:orientation];
         }
+    }
 }
 - (void) switchCamera
 {
-        if (self.defaultCamera == AVCaptureDevicePositionFront) {
-                self.defaultCamera = AVCaptureDevicePositionBack;
-        } else {
-                self.defaultCamera = AVCaptureDevicePositionFront;
+    if (self.defaultCamera == AVCaptureDevicePositionFront) {
+        self.defaultCamera = AVCaptureDevicePositionBack;
+    } else {
+        self.defaultCamera = AVCaptureDevicePositionFront;
+    }
+    
+    dispatch_async([self sessionQueue], ^{
+        NSError *error = nil;
+        
+        [self.session beginConfiguration];
+        
+        if (self.videoDeviceInput != nil) {
+            [self.session removeInput:[self videoDeviceInput]];
+            [self setVideoDeviceInput:nil];
         }
-
-        dispatch_async([self sessionQueue], ^{
-                NSError *error = nil;
-
-                [self.session beginConfiguration];
-
-                if (self.videoDeviceInput != nil) {
-                        [self.session removeInput:[self videoDeviceInput]];
-                        [self setVideoDeviceInput:nil];
-                }
-
-                AVCaptureDevice *videoDevice = [CameraSessionManager deviceWithMediaType:AVMediaTypeVideo preferringPosition:self.defaultCamera];
-
-                if ([videoDevice hasFlash] && [videoDevice isFlashModeSupported:AVCaptureFlashModeAuto]) {
-                        if ([videoDevice lockForConfiguration:&error]) {
-                                [videoDevice setFlashMode:AVCaptureFlashModeAuto];
-                                [videoDevice unlockForConfiguration];
-                        } else {
-                                NSLog(@"%@", error);
-                        }
-                }
-
-                AVCaptureDeviceInput *videoDeviceInput = [AVCaptureDeviceInput deviceInputWithDevice:videoDevice error:&error];
-
-                if (error) {
-                        NSLog(@"%@", error);
-                }
-
-                if ([self.session canAddInput:videoDeviceInput]) {
-                        [self.session addInput:videoDeviceInput];
-                        [self setVideoDeviceInput:videoDeviceInput];
-                }
-
-                [self updateOrientation:[self getCurrentOrientation]];
-                [self.session commitConfiguration];
-        });
+        
+        AVCaptureDevice *videoDevice = [CameraSessionManager deviceWithMediaType:AVMediaTypeVideo preferringPosition:self.defaultCamera];
+        
+        if ([videoDevice hasFlash] && [videoDevice isFlashModeSupported:AVCaptureFlashModeAuto]) {
+            if ([videoDevice lockForConfiguration:&error]) {
+                [videoDevice setFlashMode:AVCaptureFlashModeAuto];
+                [videoDevice unlockForConfiguration];
+            } else {
+                NSLog(@"%@", error);
+            }
+        }
+        
+        AVCaptureDeviceInput *videoDeviceInput = [AVCaptureDeviceInput deviceInputWithDevice:videoDevice error:&error];
+        
+        if (error) {
+            NSLog(@"%@", error);
+        }
+        
+        if ([self.session canAddInput:videoDeviceInput]) {
+            [self.session addInput:videoDeviceInput];
+            [self setVideoDeviceInput:videoDeviceInput];
+        }
+        
+        [self updateOrientation:[self getCurrentOrientation]];
+        [self.session commitConfiguration];
+    });
 }
 
 - (void)checkDeviceAuthorizationStatus
 {
-        NSString *mediaType = AVMediaTypeVideo;
-
-        [AVCaptureDevice requestAccessForMediaType:mediaType completionHandler:^(BOOL granted) {
-                 if (!granted) {
-                         //Not granted access to mediaType
-                         dispatch_async(dispatch_get_main_queue(), ^{
-                                [[[UIAlertView alloc] initWithTitle:@"Error"
-                                  message:@"Camera permission not found. Please, check your privacy settings."
-                                  delegate:self
+    NSString *mediaType = AVMediaTypeVideo;
+    
+    [AVCaptureDevice requestAccessForMediaType:mediaType completionHandler:^(BOOL granted) {
+        if (!granted) {
+            //Not granted access to mediaType
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [[[UIAlertView alloc] initWithTitle:@"Error"
+                                            message:@"Camera permission not found. Please, check your privacy settings."
+                                           delegate:self
                                   cancelButtonTitle:@"OK"
                                   otherButtonTitles:nil] show];
-                        });
-                 }
-         }];
+            });
+        }
+    }];
 }
 
 + (AVCaptureDevice *) deviceWithMediaType:(NSString *)mediaType preferringPosition:(AVCaptureDevicePosition)position
 {
-        NSArray *devices = [AVCaptureDevice devicesWithMediaType:mediaType];
-        AVCaptureDevice *captureDevice = [devices firstObject];
-
-        for (AVCaptureDevice *device in devices) {
-                if ([device position] == position) {
-                        captureDevice = device;
-                        break;
-                }
+    NSArray *devices = [AVCaptureDevice devicesWithMediaType:mediaType];
+    AVCaptureDevice *captureDevice = [devices firstObject];
+    
+    for (AVCaptureDevice *device in devices) {
+        if ([device position] == position) {
+            captureDevice = device;
+            break;
         }
+    }
+    
+    return captureDevice;
+}
 
-        return captureDevice;
+- (void) setFlashMode:(NSInteger) mode {
+    NSError *error = nil;
+    AVCaptureDevice *videoDevice = [CameraSessionManager deviceWithMediaType:AVMediaTypeVideo preferringPosition:self.defaultCamera];
+    if ([videoDevice lockForConfiguration:&error]) {
+        switch (mode) {
+            case 0: //AUTO
+                [self setTorch:videoDevice mode:AVCaptureTorchModeOff];
+                [self setFlash:videoDevice mode:AVCaptureFlashModeAuto];
+                break;
+            case 1: //ON
+                [self setTorch:videoDevice mode:AVCaptureTorchModeOff];
+                [self setFlash:videoDevice mode:AVCaptureFlashModeOn];
+                break;
+            case 2: //OFF
+                [self setTorch:videoDevice mode:AVCaptureTorchModeOff];
+                [self setFlash:videoDevice mode:AVCaptureFlashModeOff];
+                break;
+            case 3: //TORCH
+                [self setFlash:videoDevice mode:AVCaptureFlashModeOff];
+                [self setTorch:videoDevice mode:AVCaptureTorchModeOn];
+                break;
+            default:
+                break;
+        }
+        [videoDevice unlockForConfiguration];
+    } else {
+        NSLog(@"Error during AV device setup: %@", error);
+    }
+}
+
+- (void) setFlash:(AVCaptureDevice *)device mode:(AVCaptureFlashMode) mode {
+    if ([device hasFlash] && [device isFlashModeSupported:mode]) {
+        [device setFlashMode:mode];
+    }
+}
+
+- (void) setTorch:(AVCaptureDevice *)device mode:(AVCaptureTorchMode) mode {
+    if ([device hasTorch] && [device isTorchModeSupported:mode]) {
+        [device setTorchMode: mode];
+    }
 }
 
 @end

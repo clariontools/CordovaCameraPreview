@@ -7,6 +7,7 @@
 - (void) setupSession:(NSString *)defaultCamera;
 - (void) switchCamera;
 - (void) updateOrientation:(AVCaptureVideoOrientation)orientation;
+- (void) setFlashMode:(NSInteger) mode;
 - (AVCaptureVideoOrientation) getCurrentOrientation:(UIInterfaceOrientation)toInterfaceOrientation;
 
 @property (atomic) CIFilter *ciFilter;

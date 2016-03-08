@@ -3,29 +3,31 @@ Cordova CameraPreview Plugin
 
 Cordova plugin that allows camera interaction from HTML code.<br/>
 Show camera preview popup on top of the HTML.<br/>
+<br/>
+<p><b>Purpose of Fork:</b></p>
+Published for testing integration specifically targeting the Meteor JavaScript App Platform. Use at your own Risk.<br/>
 
 <p><b>Features:</b></p>
 <ul>
   <li>Start a camera preview from HTML code.</li>
-  <li>Drag the preview box.</li>
-  <li>Set camera color effect (Android and iOS).</li>
   <li>Send the preview box to back of the HTML content.</li>
   <li>Set a custom position for the camera preview box.</li>
   <li>Set a custom size for the preview box.</li>
   <li>Set a custom alpha for the preview box.</li>
+  <li>Set the camera flash mode to off, on, or auto.</li>
   <li>Maintain HTML interactivity.</li>
 </ul>
 
 <p><b>Installation:</b></p>
 
 ```
-cordova plugin add https://github.com/mbppower/CordovaCameraPreview.git
+cordova plugin add https://github.com/clariontools/CordovaCameraPreview.git
 ```
 
 <b>Phonegap Build:</b><br/>
 
 ```
-<gap:plugin name="com.mbppower.camerapreview" version="0.0.8" source="plugins.cordova.io" />
+<gap:plugin name="com.clariontools.camerapreview" version="0.0.9" source="plugins.cordova.io" />
 ```
 
 <p><b>Methods:</b></p>
@@ -45,11 +47,34 @@ style="background-color='transparent'"
 Javascript:
 
 ```
-var tapEnabled = true; //enable tap take picture
-var dragEnabled = true; //enable preview box drag across the screen
-var toBack = true; //send preview box to the back of the webview
-var rect = {x: 100, y: 100, width: 200, height:200};
-cordova.plugins.camerapreview.startCamera(rect, "front", tapEnabled, dragEnabled, toBack)
+var rect = {x: 100, y: 100, width: 200, height:200}; (required)
+var defaultCamera = 'rear'  // rear or front default is rear (optional)
+var toBack = true; // true indicates preview in back of html preview false forces preview on top with alpha value applied (optional)
+var maxCaptureLength = 640;  // This controls the max length of capture width or height (optional)
+
+var deviceRotation = cordova.plugins.camerapreview.ROTATION_FREE; // (optional)
+  // Possible values for camera device rotation:
+  // cordova.plugins.camerapreview.ROTATION_FREE  // default value
+  // cordova.plugins.camerapreview.ROTATION_PORTRAIT
+  // cordova.plugins.camerapreview.ROTATION_LANDSCAPE_RIGHT
+  // cordova.plugins.camerapreview.ROTATION_PORTRAIT_UPSIDE_DOWN
+  // cordova.plugins.camerapreview.ROTATION_LANDSCAPE_LEFT
+
+var alpha = 1.0 // alpha applied only when toBack = false default 1.0 (optional)
+var prefix = 'pic-' // adds prefix to the .jpg filename default is 'picture' (optional)
+
+cordova.plugins.camerapreview.startCamera(rect, defaultCamera, toBack, maxCaptureLength, rotation, alpha, prefix);
+
+// or if called with a JavaScript promise:
+
+var startCameraPromise = cordova.plugins.camerapreview.startCamera(rect, defaultCamera, toBack, maxCaptureLength, rotation, alpha, prefix);
+
+startCameraPromise.then(function (result) {
+    console.log('Result from startCamera: ' + result);
+}, function (err) {
+    console.log('Error from startCamera: ' + err);
+});
+
 ```
 
 <b>stopCamera()</b><br/>
@@ -64,16 +89,25 @@ cordova.plugins.camerapreview.stopCamera();
 
 ```
 cordova.plugins.camerapreview.takePicture({maxWidth:640, maxHeight:640});
+
+// or if called with a JavaScript promise:
+
+var takePicturePromise = cordova.plugins.camerapreview.takePicture({maxWidth:640, maxHeight:640});
+
+takePicturePromise.then(function (result) {
+    console.log('Result from takePicture: ' + result);
+}, function (err) {
+    console.log('Error from takePicture: ' + err);
+});
+
 ```
 
-
 <b>setOnPictureTakenHandler(callback)</b><br/>
-<info>Register a callback function that receives the original picture and the image captured from the preview box.</info><br/>
+<info>Register a callback function that receives the original picture image captured from the camera.</info><br/>
 
 ```
 cordova.plugins.camerapreview.setOnPictureTakenHandler(function(result){
 	document.getElementById('originalPicture').src = result[0];//originalPicturePath;
-	document.getElementById('previewPicture').src = result[1];//previewPicturePath;
 });
 ```
 
@@ -99,13 +133,29 @@ cordova.plugins.camerapreview.show();
 cordova.plugins.camerapreview.hide();
 ```
 
+<b>setFlashMode(mode)</b><br/>
+<info>Set the camera flash mode use flash mode variables</info><br/>
+<ul>
+<li>cordova.plugins.camerapreview.FLASH_AUTO</li>
+<li>cordova.plugins.camerapreview.FLASH_ON</li>
+<li>cordova.plugins.camerapreview.FLASH_OFF</li>
+<li>cordova.plugins.camerapreview.FLASH_TORCH</li>
+</ul>
+
+```
+cordova.plugins.camerapreview.(cordova.plugins.camerapreview.FLASH_AUTO);
+```
+CameraPreview.setFlashMode = function(mode) {
+exec(null, null, PLUGIN_NAME, "setFlashMode", [mode]);
+}
+
 <b>Base64 image:</b><br/>
 Use the cordova-file in order to read the picture file and them get the base64.<br/>
 Please, refer to this documentation: http://docs.phonegap.com/en/edge/cordova_file_file.md.html<br/>
 Method <i>readAsDataURL</i>: Read file and return data as a base64-encoded data URL.
 
 <b>Sample:</b><br/>
-Please see the <a href="https://github.com/mbppower/CordovaCameraPreviewApp">CordovaCameraPreviewApp</a> for a complete working example for Android and iOS platforms.
+Please see the <a href="https://github.com/mbppower/CordovaCameraPreviewApp">CordovaCameraPreviewApp</a> for a complete working example for Android and iOS platforms.  NOTE: This forked version of the Camera Preview Plugin will not work with the mbppower example without some modification.
 
 <p><b>Android Screenshots:</b></p>
 <p><img src="https://raw.githubusercontent.com/mbppower/CordovaCameraPreview/master/docs/img/android-1.png"/></p>

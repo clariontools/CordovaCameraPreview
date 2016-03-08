@@ -15,12 +15,18 @@
 - (void) takePicture:(CDVInvokedUrlCommand*)command;
 - (void) setOnPictureTakenHandler:(CDVInvokedUrlCommand*)command;
 - (void) setColorEffect:(CDVInvokedUrlCommand*)command;
+- (void) setFlashMode:(CDVInvokedUrlCommand*)command;
 
-- (void) invokeTakePicture:(CGFloat) maxWidth withHeight:(CGFloat) maxHeight;
-- (void) invokeTakePicture;
+- (void) invokeTakePicture:(CGFloat) maxWidth withHeight:(CGFloat) maxHeight command:(CDVInvokedUrlCommand*)command;
+- (void) invokeTakePicture:(CDVInvokedUrlCommand*)command;
 
 @property (nonatomic) CameraSessionManager *sessionManager;
 @property (nonatomic) CameraRenderController *cameraRenderController;
 @property (nonatomic) NSString *onPictureTakenHandlerId;
+@property (nonatomic) long maxCaptureLength;
+@property (nonatomic) BOOL capturePresetUsed;
+@property (nonatomic) BOOL imageWasRotated;
+@property (nonatomic) UIDeviceOrientation lockOrientation;
+@property (nonatomic) NSString *filePrefix;
 
 @end
