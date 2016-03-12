@@ -95,13 +95,16 @@ public class CameraPreview extends CordovaPlugin implements CameraActivity.Camer
                     String filePrefix = args.isNull(9) ? "picture" : args.getString(9);
                     
                     fragment.defaultCamera = defaultCamera;
+                    fragment.maxCaptureLength = maxCaptureLength;
                     fragment.setRect(x, y, width, height);
                     fragment.lockRotation = lockRotation;
                     fragment.filePrefix = filePrefix;
                     
                     //create or update the layout params for the container view
+                    boolean containerFound = true;
                     FrameLayout containerView = (FrameLayout)cordova.getActivity().findViewById(containerViewId);
-                    if(containerView == null){
+                    if (containerView == null) {
+                        containerFound = false;
                         containerView = new FrameLayout(cordova.getActivity().getApplicationContext());
                         containerView.setId(containerViewId);
                         
@@ -109,34 +112,37 @@ public class CameraPreview extends CordovaPlugin implements CameraActivity.Camer
                         cordova.getActivity().addContentView(containerView, containerLayoutParams);
                     }
                     
-                    // Display camera below the webview
-                    if(toBack){
+                    if (toBack) {
+                        // Display camera preview under the webview by bringing the webview to the front
                         webView.getView().setBackgroundColor(0x00000000);
                         ((ViewGroup)webView.getView()).bringToFront();
                     } else {
-                        //set camera back to front
+                        // Display camera preview on top of the webview set alpha so can see through if needed
                         containerView.setAlpha(containerAlpha);
                         containerView.bringToFront();
                     }
                     
-                    //add the fragment to the container
+                    // Add the fragment to the container
                     FragmentManager fragmentManager = cordova.getActivity().getFragmentManager();
                     FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
                     fragmentTransaction.add(containerView.getId(), fragment);
                     fragmentTransaction.commit();
+                    
+                    // Return the JavaScript Promise
                     PluginResult pluginResult = new PluginResult(PluginResult.Status.OK);
                     pluginResult.setKeepCallback(false);
                     callbackContext.sendPluginResult(pluginResult);
-                }
-                catch(Exception e){
+
+                } catch (Exception e) {
                     e.printStackTrace();
                 }
             }
         });
         return true;
     }
+    
     private boolean takePicture(final JSONArray args, CallbackContext callbackContext) {
-        if(fragment == null){
+        if (fragment == null) {
             PluginResult pluginResult = new PluginResult(PluginResult.Status.NO_RESULT);
             pluginResult.setKeepCallback(true);
             callbackContext.sendPluginResult(pluginResult);
@@ -150,8 +156,7 @@ public class CameraPreview extends CordovaPlugin implements CameraActivity.Camer
             PluginResult pluginResult = new PluginResult(PluginResult.Status.OK);
             pluginResult.setKeepCallback(false);
             callbackContext.sendPluginResult(pluginResult);
-        }
-        catch(Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
             PluginResult pluginResult = new PluginResult(PluginResult.Status.ERROR);
             pluginResult.setKeepCallback(true);
@@ -161,17 +166,20 @@ public class CameraPreview extends CordovaPlugin implements CameraActivity.Camer
         return true;
     }
     
-    public void onPictureTaken(String originalPicturePath){
+    public void onPictureTaken(String originalPicturePath) {
+        fragment.resetPreview();  // camera preview freezing with still image of capture fix
+
         JSONArray data = new JSONArray();
         data.put(originalPicturePath);
         PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, data);
         pluginResult.setKeepCallback(true);
         takePictureCallbackContext.sendPluginResult(pluginResult);
-        fragment.resetPreview();  // camera preview freezing with still image of capture fix
+        Log.d(TAG, "Called reset preview onPictureTaken.");
     }
     
     private boolean stopCamera(final JSONArray args, CallbackContext callbackContext) {
-        if(fragment == null){
+        if(fragment == null) {
+            Log.d(TAG, "ERROR: Called stop camera but not fragment found!");
             return false;
         }
         
@@ -181,11 +189,12 @@ public class CameraPreview extends CordovaPlugin implements CameraActivity.Camer
         fragmentTransaction.commit();
         fragment = null;
         
+        Log.d(TAG, "stopCamera called returning true.");
         return true;
     }
     
     private boolean showCamera(final JSONArray args, CallbackContext callbackContext) {
-        if(fragment == null){
+        if (fragment == null) {
             return false;
         }
         
@@ -196,8 +205,9 @@ public class CameraPreview extends CordovaPlugin implements CameraActivity.Camer
         
         return true;
     }
+    
     private boolean hideCamera(final JSONArray args, CallbackContext callbackContext) {
-        if(fragment == null) {
+        if (fragment == null) {
             return false;
         }
         
@@ -208,10 +218,12 @@ public class CameraPreview extends CordovaPlugin implements CameraActivity.Camer
         
         return true;
     }
+    
     private boolean switchCamera(final JSONArray args, CallbackContext callbackContext) {
-        if(fragment == null){
+        if (fragment == null) {
             return false;
         }
+        
         fragment.switchCamera();
         return true;
     }
@@ -225,7 +237,7 @@ public class CameraPreview extends CordovaPlugin implements CameraActivity.Camer
     private boolean setFlashMode(JSONArray args, CallbackContext callbackContext) {
         try {
             int mode = args.getInt(0);
-            switch(mode) {
+            switch (mode) {
                 case 0:
                     fragment.setFlashMode(Camera.Parameters.FLASH_MODE_AUTO);
                     break;

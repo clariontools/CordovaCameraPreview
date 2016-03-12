@@ -18,6 +18,8 @@ Published for testing integration specifically targeting the Meteor JavaScript A
   <li>Maintain HTML interactivity.</li>
 </ul>
 
+<p><b>Version 0.0.10</b></p>
+
 <p><b>Installation:</b></p>
 
 ```
@@ -27,7 +29,7 @@ cordova plugin add https://github.com/clariontools/CordovaCameraPreview.git
 <b>Phonegap Build:</b><br/>
 
 ```
-<gap:plugin name="com.clariontools.camerapreview" version="0.0.9" source="plugins.cordova.io" />
+<gap:plugin name="com.clariontools.camerapreview" version="0.0.10" source="plugins.cordova.io" />
 ```
 
 <p><b>Methods:</b></p>
@@ -50,7 +52,7 @@ Javascript:
 var rect = {x: 100, y: 100, width: 200, height:200}; (required)
 var defaultCamera = 'rear'  // rear or front default is rear (optional)
 var toBack = true; // true indicates preview in back of html preview false forces preview on top with alpha value applied (optional)
-var maxCaptureLength = 640;  // This controls the max length of capture width or height (optional)
+var maxCaptureLength = 640;  // This controls the max length of capture width or height 640 is only value currently supported forces 640x480 capture and preview faster and no need to resize (optional)
 
 var deviceRotation = cordova.plugins.camerapreview.ROTATION_FREE; // (optional)
   // Possible values for camera device rotation:
@@ -145,9 +147,6 @@ cordova.plugins.camerapreview.hide();
 ```
 cordova.plugins.camerapreview.(cordova.plugins.camerapreview.FLASH_AUTO);
 ```
-CameraPreview.setFlashMode = function(mode) {
-exec(null, null, PLUGIN_NAME, "setFlashMode", [mode]);
-}
 
 <b>Base64 image:</b><br/>
 Use the cordova-file in order to read the picture file and them get the base64.<br/>

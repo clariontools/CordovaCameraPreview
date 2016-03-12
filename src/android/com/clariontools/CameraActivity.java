@@ -71,6 +71,7 @@ public class CameraActivity extends Fragment {
     // The first rear facing camera
     private int defaultCameraId;
     public String defaultCamera;
+    public int maxCaptureLength;
     public int lockRotation;
     public String filePrefix;
     
@@ -124,6 +125,7 @@ public class CameraActivity extends Fragment {
             
             //video view
             mPreview = new Preview(getActivity());
+            mPreview.maxCaptureLength = maxCaptureLength;
             mainLayout = (FrameLayout) view.findViewById(getResources().getIdentifier("video_view", "id", appResourcesPackage));
             mainLayout.setLayoutParams(new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.MATCH_PARENT, RelativeLayout.LayoutParams.MATCH_PARENT));
             mainLayout.addView(mPreview);
@@ -284,10 +286,11 @@ public class CameraActivity extends Fragment {
         final ImageView pictureView = (ImageView) view.findViewById(getResources().getIdentifier("picture_view", "id", appResourcesPackage));
         if(mPreview != null) {
             
-            if(!canTakePicture)
+            if (canTakePicture == false) {
                 return;
-            
-            canTakePicture = false;
+            } else {
+                canTakePicture = false;
+            }
             
             final Camera.PictureCallback mPicture = new Camera.PictureCallback() {
                 
@@ -325,7 +328,7 @@ public class CameraActivity extends Fragment {
                     final Bitmap rotated = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
                     
                     final File pictureFile = getOutputMediaFile(filePrefix, "");
-                    if (pictureFile == null){
+                    if (pictureFile == null) {
                         Log.d(TAG, "Cannot save a null picture ");
                         canTakePicture = true;
                         return;
@@ -527,6 +530,7 @@ class Preview extends RelativeLayout implements SurfaceHolder.Callback {
     Camera mCamera;
     int cameraId;
     int displayOrientation;
+    int maxCaptureLength;
     
     Preview(Context context) {
         super(context);
@@ -556,8 +560,9 @@ class Preview extends RelativeLayout implements SurfaceHolder.Callback {
             mSupportedPreviewSizes = mCamera.getParameters().getSupportedPreviewSizes();
             Collections.sort(mSupportedPreviewSizes, new CameraSizeComparator());
             for (Camera.Size s: mSupportedPreviewSizes) {
-                Log.d(TAG, "Supported preview size: "+s.width+"x"+s.height);
+                Log.d(TAG, "Supported preview size: "+s.width + "x" + s.height);
             }
+            
             setCameraDisplayOrientation();
             
             Log.d(TAG, "setting camera in FOCUS MODE CONTINUOUS PICTURE");
@@ -572,15 +577,9 @@ class Preview extends RelativeLayout implements SurfaceHolder.Callback {
     }
     
     private void setCameraDisplayOrientation() {
-        Camera.CameraInfo info=new Camera.CameraInfo();
-        int rotation=
-        ((Activity)getContext()).getWindowManager().getDefaultDisplay()
-        .getRotation();
-        int degrees=0;
-        DisplayMetrics dm=new DisplayMetrics();
-        
-        Camera.getCameraInfo(cameraId, info);
-        ((Activity)getContext()).getWindowManager().getDefaultDisplay().getMetrics(dm);
+
+        int rotation = ((Activity)getContext()).getWindowManager().getDefaultDisplay().getRotation();
+        int degrees = 0;
         
         switch (rotation) {
             case Surface.ROTATION_0:
@@ -597,17 +596,21 @@ class Preview extends RelativeLayout implements SurfaceHolder.Callback {
                 break;
         }
         
+        Camera.CameraInfo info = new Camera.CameraInfo();
+        Camera.getCameraInfo(cameraId, info);
+        
         if (info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
-            displayOrientation=(info.orientation + degrees) % 360;
-            displayOrientation=(360 - displayOrientation) % 360;
+            displayOrientation = (info.orientation + degrees) % 360;
+            displayOrientation = (360 - displayOrientation) % 360;
         } else {
-            displayOrientation=(info.orientation - degrees + 360) % 360;
+            displayOrientation = (info.orientation - degrees + 360) % 360;
         }
         
         Log.d(TAG, "screen is rotated " + degrees + "deg from natural");
         Log.d(TAG, (info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT ? "front" : "back")
               + " camera is oriented -" + info.orientation + "deg from natural");
         Log.d(TAG, "need to rotate preview " + displayOrientation + "deg");
+        
         mCamera.setDisplayOrientation(displayOrientation);
     }
     
@@ -628,18 +631,30 @@ class Preview extends RelativeLayout implements SurfaceHolder.Callback {
     
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-        // We purposely disregard child measurements because act as a
-        // wrapper to a SurfaceView that centers the camera preview instead
-        // of stretching it.
+        // We purposely disregard child measurements because act as a wrapper to
+        // a SurfaceView that centers the camera preview instead of stretching it.
+        //
+        // This does not seem to be called on the CorodovaCameraPreview
+        //
         final int width = resolveSize(getSuggestedMinimumWidth(), widthMeasureSpec);
         final int height = resolveSize(getSuggestedMinimumHeight(), heightMeasureSpec);
+        
         setMeasuredDimension(width, height);
+        
+        LOG.d(TAG, "setMeasuredDimension from onMeasure Override width:" + width + " height:" + height);
         
         if (mSupportedPreviewSizes != null) {
             mPreviewSize = getOptimalImageSize(mSupportedPreviewSizes, width, height, null);
+            LOG.d(TAG, "Set mPreviewSize from onMeasure Override width:" + mPreviewSize.width + " height:" + mPreviewSize.height);
+        } else {
+            LOG.d(TAG, "DID NOT SET mPreviewSize from onMeasure Override width:" + mPreviewSize.width + " height:" + mPreviewSize.height);
         }
+        
         if (mSupportedPictureSizes != null) {
             mPictureSize = getOptimalImageSize(mSupportedPictureSizes, width, height, mPreviewSize);
+            LOG.d(TAG, "Set mPictureSize from onMeasure Override width:" + mPictureSize.width + " height:" + mPictureSize.height);
+        } else {
+            LOG.d(TAG, "DID NOT SET mPictureSize from onMeasure Override width:" + mPictureSize.width + " height:" + mPictureSize.height);
         }
     }
     
@@ -659,7 +674,7 @@ class Preview extends RelativeLayout implements SurfaceHolder.Callback {
                 previewWidth = mPreviewSize.width;
                 previewHeight = mPreviewSize.height;
                 
-                if(displayOrientation == 90 || displayOrientation == 270) {
+                if (displayOrientation == 90 || displayOrientation == 270) {
                     previewWidth = mPreviewSize.height;
                     previewHeight = mPreviewSize.width;
                 }
@@ -682,8 +697,7 @@ class Preview extends RelativeLayout implements SurfaceHolder.Callback {
                 nH = (int)(height * scale);
                 top = 0;
                 left = (width - scaledChildWidth) / 2;
-            }
-            else {
+            } else {
                 Log.d(TAG, "center vertically");
                 int scaledChildHeight = (int)((previewHeight * width / previewWidth) * scale);
                 nW = (int)(width * scale);
@@ -691,6 +705,7 @@ class Preview extends RelativeLayout implements SurfaceHolder.Callback {
                 top = (height - scaledChildHeight) / 2;
                 left = 0;
             }
+            
             child.layout(left, top, nW, nH);
             
             Log.d("layout", "left:" + left);
@@ -723,12 +738,36 @@ class Preview extends RelativeLayout implements SurfaceHolder.Callback {
     private Camera.Size getOptimalImageSize(List<Camera.Size> sizes, int w, int h, Camera.Size reference) {
         final double ASPECT_TOLERANCE = 0.1;
         double targetRatio = (double) w / h;
+
         if (displayOrientation == 90 || displayOrientation == 270) {
             targetRatio = (double) h / w;
         }
-        if (sizes == null) return null;
+
+        if (sizes == null) {
+            return null;
+        }
         
         Camera.Size optimalSize = null;
+
+        if (maxCaptureLength == 640) {
+            Log.d(TAG, "DETECTED 640 maxCaptureLength setting..");
+
+            optimalSize = sizes.get(0); // Set the default to the first reported size by camera if no 640 found
+
+            // Try to find an size match for the maxCaptureLength
+            for (Camera.Size size : sizes) {
+                optimalSize = size;
+                if (optimalSize.width == maxCaptureLength) {
+                    Log.d(TAG, "SUPPORTS 640x480 Capture or Preview size: w: " + optimalSize.width + " h: " + optimalSize.height);
+                    return optimalSize;
+                }
+            }
+        
+            Log.d(TAG, "Capture or Preview does not support 640x480 default to first report size: w: " + optimalSize.width + " h: " + optimalSize.height);
+            
+            return optimalSize;
+        }
+
         double minDiff = Double.MAX_VALUE;
         
         int targetHeight = h;
@@ -752,14 +791,15 @@ class Preview extends RelativeLayout implements SurfaceHolder.Callback {
         }
         
         // Cannot find the one match the aspect ratio, ignore the requirement
+        // I don't think this really works in all cases and ends up returning the
+        // first supported size which could be a bad choice
         if (optimalSize == null) {
-            // Issue 53
             Log.d(TAG, "No optimal size found, searching for widest preview");
             optimalSize = sizes.get(0);
-            for(int i=0;i < sizes.size(); i++) {
+            for (int i=0; i < sizes.size(); i++) {
                 Camera.Size s = sizes.get(i);
                 Log.d(TAG, "Size "+s.width+"x"+s.height);
-                if(s.width >= optimalSize.width) {
+                if (s.width >= optimalSize.width) {
                     optimalSize = s;
                     if (reference != null && optimalSize.width >= reference.width && optimalSize.height >= reference.height) {
                         Log.d(TAG, "Candidate closest to reference found; w: " + optimalSize.width + " h: " + optimalSize.height);
@@ -770,6 +810,7 @@ class Preview extends RelativeLayout implements SurfaceHolder.Callback {
         }
         
         Log.d(TAG, "chosen size: w: " + optimalSize.width + " h: " + optimalSize.height);
+
         return optimalSize;
     }
     
