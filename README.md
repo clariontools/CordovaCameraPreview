@@ -15,10 +15,11 @@ Published for testing integration specifically targeting the Meteor JavaScript A
   <li>Set a custom size for the preview box.</li>
   <li>Set a custom alpha for the preview box.</li>
   <li>Set the camera flash mode to off, on, or auto.</li>
+  <li>Set the quality of the saved JPEG capture file.</li>
   <li>Maintain HTML interactivity.</li>
 </ul>
 
-<p><b>Version 0.0.10</b></p>
+<p><b>Version 0.0.11</b></p>
 
 <p><b>Installation:</b></p>
 
@@ -29,7 +30,7 @@ cordova plugin add https://github.com/clariontools/CordovaCameraPreview.git
 <b>Phonegap Build:</b><br/>
 
 ```
-<gap:plugin name="com.clariontools.camerapreview" version="0.0.10" source="plugins.cordova.io" />
+<gap:plugin name="com.clariontools.camerapreview" version="0.0.11" source="plugins.cordova.io" />
 ```
 
 <p><b>Methods:</b></p>
@@ -87,14 +88,26 @@ cordova.plugins.camerapreview.stopCamera();
 ```
 
 <b>takePicture(size)</b><br/>
-<info>Take the picture, the parameter size is optional</info><br/>
+<info>Take the picture, the parameter size is optional, the quality parameter is also optional but will default to 80.  If you use the new _maxCaptureLength_ parameter in the startCamera method then the takePicture maxWidth and maxHeight parameters are ignored.</info><br/>
 
 ```
-cordova.plugins.camerapreview.takePicture({maxWidth:640, maxHeight:640});
+cordova.plugins.camerapreview.takePicture({maxWidth:640, maxHeight:640}, 80);
+
+// if only the quality parameter is to be set:
+
+cordova.plugins.camerapreview.takePicture(undefined, 75);
+
 
 // or if called with a JavaScript promise:
 
+// EXAMPLE 1: without maxWidth and maxHeight...
+var takePicturePromise = cordova.plugins.camerapreview.takePicture(undefined,72);
+
+// EXAMPLE 2: original style with flakey maxWidth and maxHeight parms specified...
 var takePicturePromise = cordova.plugins.camerapreview.takePicture({maxWidth:640, maxHeight:640});
+
+// EXAMPLE 3: with the defaults of no maxWidth, maxHeight and quality of 80...
+var takePicturePromise = cordova.plugins.camerapreview.takePicture();
 
 takePicturePromise.then(function (result) {
     console.log('Result from takePicture: ' + result);

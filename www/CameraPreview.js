@@ -35,13 +35,15 @@ CameraPreview.stopCamera = function() {
 };
 
 //@param size {maxWidth: 100, maxHeight:100}
-CameraPreview.takePicture = function(size) {
-    var params = [0, 0];
-    if (size) {
-        params = [size.maxWidth, size.maxHeight];
+//@param quality 80
+CameraPreview.takePicture = function(size, quality) {
+    if (typeof size !== 'object' || typeof size === 'object' && (size.maxWidth !== undefined || size.maxHeight !== undefined)) {
+        size = {maxWidth: 0, maxHeight: 0};
     }
+    if ( typeof quality === 'undefined') quality = 80;
+    
     return new Promise(function(resolve, reject){
-                       exec(resolve, reject, PLUGIN_NAME, "takePicture", params);
+                       exec(resolve, reject, PLUGIN_NAME, "takePicture", [size.maxWidth, size.maxHeight, quality]);
                        });
 };
 

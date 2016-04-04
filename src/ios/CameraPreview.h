@@ -17,7 +17,7 @@
 - (void) setColorEffect:(CDVInvokedUrlCommand*)command;
 - (void) setFlashMode:(CDVInvokedUrlCommand*)command;
 
-- (void) invokeTakePicture:(CGFloat) maxWidth withHeight:(CGFloat) maxHeight command:(CDVInvokedUrlCommand*)command;
+- (void) invokeTakePicture:(CGFloat) maxWidth withHeight:(CGFloat) maxHeight withQuality:(int) quality command:(CDVInvokedUrlCommand*)command;
 - (void) invokeTakePicture:(CDVInvokedUrlCommand*)command;
 
 @property (nonatomic) CameraSessionManager *sessionManager;

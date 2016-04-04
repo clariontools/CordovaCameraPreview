@@ -168,7 +168,8 @@
     if (self.cameraRenderController != NULL) {
         CGFloat maxW = (CGFloat)[command.arguments[0] floatValue];
         CGFloat maxH = (CGFloat)[command.arguments[1] floatValue];
-        [self invokeTakePicture:maxW withHeight:maxH command:command];
+        int quality = (int)[command.arguments[2] integerValue];
+        [self invokeTakePicture:maxW withHeight:maxH withQuality:quality command:command];
     } else {
         pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Camera not started"];
         [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
@@ -226,15 +227,15 @@
 }
 
 - (void) invokeTakePicture:(CDVInvokedUrlCommand *)command {
-    [self invokeTakePicture:0.0 withHeight:0.0 command:command];
+    [self invokeTakePicture:0.0 withHeight:0.0 withQuality:80 command:command];
 }
 + (NSString *) applicationDocumentsDirectory
 {
     NSString *path = [NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES) objectAtIndex:0];
     return [path stringByAppendingPathComponent:@"NoCloud"]; // cordova.file.dataDirectory
 }
-+ (NSString *)saveImage:(UIImage *)image withName:(NSString*)name {
-    NSData *data = UIImageJPEGRepresentation(image, 1.0);
++ (NSString *)saveImage:(UIImage *)image withName:(NSString*)name withQuality:(int)quality {
+    NSData *data = UIImageJPEGRepresentation(image, (CGFloat)quality * 0.01);
     NSFileManager *fileManager = [NSFileManager defaultManager];
     NSString *fullPath = [[CameraPreview applicationDocumentsDirectory] stringByAppendingPathComponent:name];
     [fileManager createFileAtPath:fullPath contents:data attributes:nil];
@@ -242,11 +243,12 @@
     return fullPath;
 }
 
-- (void) invokeTakePicture:(CGFloat) maxWidth withHeight:(CGFloat) maxHeight command:(CDVInvokedUrlCommand*)command {
+- (void) invokeTakePicture:(CGFloat) maxWidth withHeight:(CGFloat) maxHeight withQuality:(int) quality command:(CDVInvokedUrlCommand*)command {
     AVCaptureConnection *connection = [self.sessionManager.stillImageOutput connectionWithMediaType:AVMediaTypeVideo];
     [self.sessionManager.stillImageOutput captureStillImageAsynchronouslyFromConnection:connection completionHandler:^(CMSampleBufferRef sampleBuffer, NSError *error) {
 
         NSLog(@"Done creating still image");
+        NSLog(@"Quality parameter is: %d.", quality);
 
         if (error) {
             NSLog(@"Error taking picture: %@", error);
@@ -358,7 +360,8 @@
                 NSString *fileName = [self.filePrefix stringByAppendingString:[[[NSUUID UUID] UUIDString] stringByAppendingString:@".jpg"]];
                 CIContext *context = [CIContext contextWithOptions:nil];
                 UIImage *saveUIImage = [UIImage imageWithCGImage:[context createCGImage:finalCImage fromRect:finalCImage.extent]];
-                originalPicturePath = [CameraPreview saveImage: saveUIImage withName: fileName];
+
+                originalPicturePath = [CameraPreview saveImage: saveUIImage withName: fileName withQuality: quality];
 
                 NSLog(@"originalPicturePath: %@", originalPicturePath);
                 dispatch_group_leave(group);

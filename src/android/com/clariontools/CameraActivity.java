@@ -282,7 +282,7 @@ public class CameraActivity extends Fragment {
         return ret;
     }
     
-    public void takePicture(final double maxWidth, final double maxHeight){
+    public void takePicture(final double maxWidth, final double maxHeight, final int quality){
         final ImageView pictureView = (ImageView) view.findViewById(getResources().getIdentifier("picture_view", "id", appResourcesPackage));
         if(mPreview != null) {
             
@@ -336,7 +336,7 @@ public class CameraActivity extends Fragment {
                     
                     try {
                         FileOutputStream fos = new FileOutputStream(pictureFile);
-                        rotated.compress(Bitmap.CompressFormat.JPEG, 100, fos);
+                        rotated.compress(Bitmap.CompressFormat.JPEG, quality, fos);
                         fos.close();
                         new Thread() {
                             public void run() {
@@ -842,6 +842,7 @@ class Preview extends RelativeLayout implements SurfaceHolder.Callback {
             // Convert YuV to Jpeg
             Rect rect = new Rect(0, 0, w, h);
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            // For preview capture not utilized, if needed consider making quality value a param
             yuvImage.compressToJpeg(rect, 80, outputStream);
             return outputStream.toByteArray();
         }
