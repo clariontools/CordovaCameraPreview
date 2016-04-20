@@ -28,6 +28,7 @@
 @property (nonatomic) NSLock *renderLock;
 @property BOOL dragEnabled;
 @property BOOL tapToTakePicture;
+@property (nonatomic) long zoomLevel;
 @property (nonatomic, assign) id delegate;
 
 @end

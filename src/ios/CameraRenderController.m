@@ -132,23 +132,35 @@
         CVPixelBufferRef pixelBuffer = (CVPixelBufferRef)CMSampleBufferGetImageBuffer(sampleBuffer);
         CIImage *image = [CIImage imageWithCVPixelBuffer:pixelBuffer];
         
-        
         CGFloat scaleHeight = self.view.frame.size.height/image.extent.size.height;
         CGFloat scaleWidth = self.view.frame.size.width/image.extent.size.width;
-        
         CGFloat scale, x, y;
-        if (scaleHeight < scaleWidth) {
-            scale = scaleWidth;
-            x = 0;
-            y = ((scale * image.extent.size.height) - self.view.frame.size.height ) / 2;
+        CGAffineTransform xscale;
+        
+        if (self.zoomLevel > 0) {
+            scaleHeight *= (CGFloat)(self.zoomLevel);
+            scaleWidth *= (CGFloat)(self.zoomLevel);
+
+            y = ((scaleWidth * image.extent.size.height) - self.view.frame.size.height ) / 2;
+            x = ((scaleHeight * image.extent.size.width) - self.view.frame.size.width ) / 2;
+            
+            xscale = CGAffineTransformMakeScale(scaleWidth, scaleHeight);
+            
         } else {
-            scale = scaleHeight;
-            x = ((scale * image.extent.size.width) - self.view.frame.size.width )/ 2;
-            y = 0;
+            if (scaleHeight < scaleWidth) {
+                scale = scaleWidth;
+                x = 0;
+                y = ((scale * image.extent.size.height) - self.view.frame.size.height ) / 2;
+            } else {
+                scale = scaleHeight;
+                x = ((scale * image.extent.size.width) - self.view.frame.size.width ) / 2;
+                y = 0;
+            }
+            
+            xscale = CGAffineTransformMakeScale(scale, scale);
         }
         
         // scale - translate
-        CGAffineTransform xscale = CGAffineTransformMakeScale(scale, scale);
         CGAffineTransform xlate = CGAffineTransformMakeTranslation(-x, -y);
         CGAffineTransform xform =  CGAffineTransformConcat(xscale, xlate);
         

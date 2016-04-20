@@ -16,10 +16,11 @@ Published for testing integration specifically targeting the Meteor JavaScript A
   <li>Set a custom alpha for the preview box.</li>
   <li>Set the camera flash mode to off, on, or auto.</li>
   <li>Set the quality of the saved JPEG capture file.</li>
+  <li>Set the camera zoom.</li>
   <li>Maintain HTML interactivity.</li>
 </ul>
 
-<p><b>Version 0.0.11</b></p>
+<p><b>Version 0.0.12</b></p>
 
 <p><b>Installation:</b></p>
 
@@ -30,7 +31,7 @@ cordova plugin add https://github.com/clariontools/CordovaCameraPreview.git
 <b>Phonegap Build:</b><br/>
 
 ```
-<gap:plugin name="com.clariontools.camerapreview" version="0.0.11" source="plugins.cordova.io" />
+<gap:plugin name="com.clariontools.camerapreview" version="0.0.12" source="plugins.cordova.io" />
 ```
 
 <p><b>Methods:</b></p>
@@ -110,6 +111,10 @@ var takePicturePromise = cordova.plugins.camerapreview.takePicture({maxWidth:640
 var takePicturePromise = cordova.plugins.camerapreview.takePicture();
 
 takePicturePromise.then(function (result) {
+    // Advise not to use this to make any important settings
+    // the picture take handler callback may occur before the promise is
+    // returned, there is no gaurantee, the err return is ok to use to handle error.
+    // this is ok to determine the call was made, but the real action is in the callback.
     console.log('Result from takePicture: ' + result);
 }, function (err) {
     console.log('Error from takePicture: ' + err);
@@ -126,6 +131,38 @@ cordova.plugins.camerapreview.setOnPictureTakenHandler(function(result){
 });
 ```
 
+<b>getZoomLevels(targetWholeNumbers, maxZoomLevel, maxZoomRatio)</b><br/>
+<info>getZoomLevels returns a JSON object with the zoom ratios array, zoom level array, and zoom count to be used with setZoomLevel method and to build up a useful interface in your app.</info><br/>
+
+```
+var getZoomPromise = cordova.plugins.camerapreview.getZoomLevels(
+Session.get('targetWholeNumbers'),
+Session.get('maxZoomLevel'),
+Session.get('maxZoomRatio')
+);
+//
+// examples
+// 
+//var getZoomPromise = cordova.plugins.camerapreview.getZoomLevels(true,3);
+//var getZoomPromise = cordova.plugins.camerapreview.getZoomLevels(false,0,200);
+//var getZoomPromise = cordova.plugins.camerapreview.getZoomLevels(true,7,600);
+//var getZoomPromise = cordova.plugins.camerapreview.getZoomLevels();
+
+getZoomPromise.then(function (result) {
+  console.log('Result from takePicture: ' + result);
+  }, function (err) {
+  console.log('Error from takePicture: ' + err);
+});
+
+```
+
+<b>setZoomLevel(zoomLevel)</b><br/>
+<info>Sets the zoom level based on valid level reported back from getZoomLevels object.</info><br/>
+
+```
+cordova.plugins.camerapreview.setZoomLevel(zoomObject.zoomLevels[currentZoomCount]);
+
+```
 
 <b>switchCamera()</b><br/>
 <info>Switch from the rear camera and front camera, if available.</info><br/>

@@ -51,6 +51,7 @@ public class CameraActivity extends Fragment {
     
     public interface CameraPreviewListener {
         public void onPictureTaken(String originalPicturePath);
+        public void onCameraPreviewReady();
     }
     
     private CameraPreviewListener eventListener;
@@ -108,7 +109,7 @@ public class CameraActivity extends Fragment {
         this.height = height;
     }
     
-    private void createCameraPreview(){
+    private void createCameraPreview() {
         
         if (orientationListener == null && lockRotation == FREE_ROTATION) {
             orientationListener = new SimpleOrientationListener(this.getActivity().getApplicationContext());
@@ -174,6 +175,13 @@ public class CameraActivity extends Fragment {
         }
         
         Log.d(TAG, "cameraCurrentlyLocked:" + cameraCurrentlyLocked);
+
+        // tell javascript callback that the preview is ready and the camera parameters can be queried
+        new Thread() {
+            public void run() {
+               eventListener.onCameraPreviewReady();
+            }
+        }.start();
         
         final FrameLayout frameContainerLayout = (FrameLayout) view.findViewById(getResources().getIdentifier("frame_container", "id", appResourcesPackage));
         ViewTreeObserver viewTreeObserver = frameContainerLayout.getViewTreeObserver();
@@ -418,6 +426,30 @@ public class CameraActivity extends Fragment {
         parameters.setFlashMode(mode);
         mCamera.setParameters(parameters);
     }
+
+    public void setZoom(int zoom) {
+        final Camera.Parameters parameters = mCamera.getParameters();
+        if (parameters.isZoomSupported()) {
+            final int maxZoom = parameters.getMaxZoom();
+            final List<Integer> zooms = parameters.getZoomRatios();
+            Log.d(TAG, "From public setZoom zoom: " + String.valueOf(zoom) + " maxZoom: " + String.valueOf(maxZoom));
+            Log.d(TAG, "From public setZoom zoom ratios supported:");
+            for ( int i = 0; i <= maxZoom; i++ ) {
+                Log.d(TAG, String.valueOf(i) + ": Zoom: " + String.valueOf(zooms.get(i)));
+            }
+            
+            if (zoom < 0 || zoom > maxZoom) {
+                Log.d(TAG, "From public throw execption zoom: " + String.valueOf(zoom) + " is unsupported.");
+                throw new IllegalArgumentException(String.format("Zoom level %d unsupported.", zoom));
+            }
+            Log.d(TAG, "From public setZoom goint to setZoom with zoom: " + String.valueOf(zoom));
+            if (mPreview != null) {
+                mPreview.zoomLevel = zoom;
+            }
+            parameters.setZoom(zoom);
+            mCamera.setParameters(parameters);
+        }
+    }
     
     public static class SimpleOrientationListener extends OrientationEventListener {
         
@@ -521,6 +553,8 @@ public class CameraActivity extends Fragment {
 class Preview extends RelativeLayout implements SurfaceHolder.Callback {
     private final String TAG = "Preview";
     
+    public int zoomLevel;
+    
     CustomSurfaceView mSurfaceView;
     SurfaceHolder mHolder;
     Camera.Size mPreviewSize;
@@ -531,7 +565,7 @@ class Preview extends RelativeLayout implements SurfaceHolder.Callback {
     int cameraId;
     int displayOrientation;
     int maxCaptureLength;
-    
+
     Preview(Context context) {
         super(context);
         
@@ -560,7 +594,7 @@ class Preview extends RelativeLayout implements SurfaceHolder.Callback {
             mSupportedPreviewSizes = mCamera.getParameters().getSupportedPreviewSizes();
             Collections.sort(mSupportedPreviewSizes, new CameraSizeComparator());
             for (Camera.Size s: mSupportedPreviewSizes) {
-                Log.d(TAG, "Supported preview size: "+s.width + "x" + s.height);
+                Log.d(TAG, "Supported preview size: " + s.width + "x" + s.height);
             }
             
             setCameraDisplayOrientation();
@@ -568,6 +602,9 @@ class Preview extends RelativeLayout implements SurfaceHolder.Callback {
             Log.d(TAG, "setting camera in FOCUS MODE CONTINUOUS PICTURE");
             Camera.Parameters params = mCamera.getParameters();
             params.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE);
+            
+            Log.d(TAG, "setting camera zoom level to current level " + this.zoomLevel + " as requested.");
+            params.setZoom(this.zoomLevel);
             mCamera.setParameters(params);
         }
     }

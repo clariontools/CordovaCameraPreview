@@ -21,11 +21,17 @@ CameraPreview.setOnPictureTakenHandler = function(onPictureTaken) {
     exec(onPictureTaken, onPictureTaken, PLUGIN_NAME, "setOnPictureTakenHandler", []);
 };
 
+CameraPreview.setOnCameraPreviewReadyHandler = function(onCameraPreviewReady) {
+    exec(onCameraPreviewReady, onCameraPreviewReady, PLUGIN_NAME, "setOnCameraPreviewReadyHandler", []);
+};
+
 //@param rect {x: 0, y: 0, width: 100, height:100}
 //@param defaultCamera "front" | "back"
 CameraPreview.startCamera = function(rect, defaultCamera, toBack, maxCaptureLength, rotation, alpha, prefix) {
-    if (typeof(alpha) === 'undefined') alpha = 1;
-    return new Promise(function(resolve, reject){
+    if (typeof(alpha) === 'undefined') {
+        alpha = 1;
+    }
+    return new Promise( function(resolve, reject) {
                        exec(resolve, reject, PLUGIN_NAME, "startCamera", [rect.x, rect.y, rect.width, rect.height, defaultCamera, !!toBack, maxCaptureLength, rotation, alpha, prefix]);
                        });
 };
@@ -40,9 +46,9 @@ CameraPreview.takePicture = function(size, quality) {
     if (typeof size !== 'object' || typeof size === 'object' && (size.maxWidth !== undefined || size.maxHeight !== undefined)) {
         size = {maxWidth: 0, maxHeight: 0};
     }
-    if ( typeof quality === 'undefined') quality = 80;
+    if (typeof quality === 'undefined') quality = 80;
     
-    return new Promise(function(resolve, reject){
+    return new Promise( function(resolve, reject) {
                        exec(resolve, reject, PLUGIN_NAME, "takePicture", [size.maxWidth, size.maxHeight, quality]);
                        });
 };
@@ -65,6 +71,26 @@ CameraPreview.disable = function(disable) {
 
 CameraPreview.setFlashMode = function(mode) {
     exec(null, null, PLUGIN_NAME, "setFlashMode", [mode]);
-}
+};
+
+CameraPreview.setZoomLevel = function(zoom) {
+    if ( typeof zoom === 'undefined') zoom = 0;
+    exec(null, null, PLUGIN_NAME, "setZoomLevel", [zoom]);
+};
+
+//@param targetWholeNumbers false
+//@param maxZoomLevels 0
+//@param maxZoomRatio 0
+CameraPreview.getZoomLevels = function(targetWholeNumbers, maxZoomLevels, maxZoomRatio) {
+    if (typeof maxZoomLevels === 'undefined') {
+        maxZoomLevels = 0;
+    }
+    if (typeof maxZoomRatio === 'undefined') {
+        maxZoomRatio = 0;
+    }
+    return new Promise( function(resolve, reject) {
+                       exec(resolve, reject, PLUGIN_NAME, "getZoomLevels", [!!targetWholeNumbers, maxZoomLevels, maxZoomRatio]);
+                       });
+};
 
 module.exports = CameraPreview;

@@ -55,11 +55,11 @@
         
         // Use more efficient capture format if larger is not needed and avoid resize
         // TESING FOR EFFECT OF sessionPreset
-        //self.session.sessionPreset = AVCaptureSessionPresetPhoto;     // Max resolution of camera 4s - 6 3264x2448
-        //self.session.sessionPreset = AVCaptureSessionPreset640x480;
-        //self.session.sessionPreset = AVCaptureSessionPresetMedium;    // 320 x 480 on iPhone 8mp
-        //self.session.sessionPreset = AVCaptureSessionPresetHigh;      // 1081 x 1980 on iPhone 8mp
-        //self.session.sessionPreset = AVCaptureSessionPreset1280x720;
+        //self.sessionManager.session.sessionPreset = AVCaptureSessionPresetPhoto;     // Max resolution of camera 4s - 6 3264x2448
+        //self.sessionManager.session.sessionPreset = AVCaptureSessionPreset640x480;
+        //self.sessionManager.session.sessionPreset = AVCaptureSessionPresetMedium;    // 320 x 480 on iPhone 8mp
+        //self.sessionManager.session.sessionPreset = AVCaptureSessionPresetHigh;      // 1081 x 1980 on iPhone 8mp
+        //self.sessionManager.session.sessionPreset = AVCaptureSessionPreset1280x720;
         if (self.maxCaptureLength == 640) {
             self.sessionManager.session.sessionPreset = AVCaptureSessionPreset640x480;
             self.capturePresetUsed = true;
@@ -71,6 +71,7 @@
         self.cameraRenderController.tapToTakePicture = false; // tapToTakePicture;
         self.cameraRenderController.sessionManager = self.sessionManager;
         self.cameraRenderController.view.frame = CGRectMake(x, y, width, height);
+        self.cameraRenderController.zoomLevel = 0;
         self.cameraRenderController.delegate = self;
         
         [self.viewController addChildViewController:self.cameraRenderController];
@@ -89,12 +90,21 @@
         self.sessionManager.delegate = self.cameraRenderController;
         [self.sessionManager setupSession:defaultCamera];
         
-        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
+        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"OK"];
+        dispatch_async(self.sessionManager.sessionQueue, ^{
+            [self.commandDelegate sendPluginResult:pluginResult callbackId:self.onCameraPreviewReadyHandlerId];
+        });
+        
     } else {
         pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Invalid number of parameters"];
     }
     
     [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+}
+
+- (void) setOnCameraPreviewReadyHandler:(CDVInvokedUrlCommand*)command {
+    NSLog(@"setOnCameraPreviewReadyHandler");
+    self.onCameraPreviewReadyHandlerId = command.callbackId;
 }
 
 - (void) stopCamera:(CDVInvokedUrlCommand*)command {
@@ -161,6 +171,48 @@
     [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
 }
 
+- (void) getZoomLevels:(CDVInvokedUrlCommand*)command {
+    NSLog(@"getZoomLevels");
+    CDVPluginResult *pluginResult;
+    
+    if (self.cameraRenderController != NULL) {
+        bool targetWholeNumbers = [command.arguments[0] boolValue];
+        long maxZoomLevels = [command.arguments[1] integerValue];
+        long maxZoomRatio = [command.arguments[2] integerValue];
+        //{"zoomRatios":["1.00","2.00","3.00","4.00"],"zoomLevels":[0,2,3,4],"zoomCount":3}
+        //
+        // For now not bothering to replicate Android interface just use the zoom level
+        // long values to indicate whole number zooms could replicate Android interface
+        // to set a default or build up ratios and levels based on parameters passed
+        //
+        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"{\"zoomRatios\":[\"1.00\",\"2.00\",\"3.00\",\"4.00\"],\"zoomLevels\":[0,2,3,4],\"zoomCount\":3}"];
+    } else {
+        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Camera not started"];
+    }
+    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+}
+
+- (void) setZoomLevel:(CDVInvokedUrlCommand*)command {
+    NSLog(@"setZoomLevel");
+    CDVPluginResult *pluginResult;
+    
+    if (self.cameraRenderController != NULL) {
+        long zoom = [command.arguments[0] integerValue];
+
+        if (zoom >= 0) {
+            NSLog(@"zoom level requested %ld", zoom);
+            self.cameraRenderController.zoomLevel = zoom;
+            
+            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"OK"];
+        } else {
+            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Invalid zoom value requested"];
+        }
+    } else {
+        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Camera not started"];
+    }
+    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+}
+
 - (void) takePicture:(CDVInvokedUrlCommand*)command {
     NSLog(@"takePicture");
     CDVPluginResult *pluginResult;
@@ -170,10 +222,11 @@
         CGFloat maxH = (CGFloat)[command.arguments[1] floatValue];
         int quality = (int)[command.arguments[2] integerValue];
         [self invokeTakePicture:maxW withHeight:maxH withQuality:quality command:command];
+        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"OK"];
     } else {
         pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Camera not started"];
-        [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
     }
+    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
 }
 
 - (void) setOnPictureTakenHandler:(CDVInvokedUrlCommand*)command {
@@ -258,10 +311,10 @@
             // Capture a preview image from the latest video frame
             // remove preview capture but could add back if had switch to save to the Gallery
             /*
-            [self.cameraRenderController.renderLock lock];
-            CIImage *previewCImage = self.cameraRenderController.latestFrame;
-            [self.cameraRenderController.renderLock unlock];
-            */
+             [self.cameraRenderController.renderLock lock];
+             CIImage *previewCImage = self.cameraRenderController.latestFrame;
+             [self.cameraRenderController.renderLock unlock];
+             */
             
             // Get the current device orientation or lock with a requested orientation
             UIDeviceOrientation currentOrientation = self.lockOrientation != UIDeviceOrientationUnknown ? self.lockOrientation : [[UIDevice currentDevice] orientation];
@@ -293,22 +346,74 @@
             
             CGFloat maxWidthResize = maxWidth;
             CGFloat maxHeightResize = maxHeight;
+            CGFloat capturedWidth = capturedImage.size.width;
+            CGFloat capturedHeight = capturedImage.size.height;
+            CGFloat scaleHeightAdjustment = 0.0f;
+            CGFloat scaleWidthAdjustment = 0.0f;
+            CGFloat frameWidth = 0.0f;
+            CGFloat frameHeight = 0.0f;
+            long adjustX;
+            long adjustY;
+            long zoomLevel = self.cameraRenderController.zoomLevel;
+            
             if (self.imageWasRotated == true) {
+                NSLog(@"image WAS rotaed.");
                 maxWidthResize = maxHeight;
                 maxHeightResize = maxWidth;
             }
             
+            if (zoomLevel > 0) {
+                skipResize = false;
+                maxWidthResize = capturedWidth * zoomLevel;
+                maxHeightResize = capturedHeight * zoomLevel;
+                
+                frameWidth = self.cameraRenderController.view.frame.size.width;
+                frameHeight = self.cameraRenderController.view.frame.size.height;
+                
+                scaleWidthAdjustment = 1.00000000000000000f - (frameWidth / capturedWidth);
+                scaleHeightAdjustment = 1.00000000000000000f - (frameHeight / capturedHeight);
+                
+                adjustX = frameWidth * scaleWidthAdjustment;
+                adjustY = frameHeight * scaleHeightAdjustment;
+            }
+            
             if (skipResize == false && maxWidthResize > 0 && maxWidthResize > 0) {
                 NSLog(@"Resizing image");
-                CGFloat scaleHeight = maxWidthResize/capturedImage.size.height;
-                CGFloat scaleWidth = maxHeightResize/capturedImage.size.width;
+                CIImage *resizedCImage;
+                
+                CGFloat scaleHeight = maxHeightResize/capturedHeight;
+                CGFloat scaleWidth = maxWidthResize/capturedWidth;
                 CGFloat scale = scaleHeight > scaleWidth ? scaleWidth : scaleHeight;
+                
+                NSLog(@"Scale = %f", scale);
                 
                 CIFilter *resizeFilter = [CIFilter filterWithName:@"CILanczosScaleTransform"];
                 [resizeFilter setValue:[[CIImage alloc] initWithCGImage:[capturedImage CGImage]] forKey:kCIInputImageKey];
                 [resizeFilter setValue:[NSNumber numberWithFloat:1.0f] forKey:@"inputAspectRatio"];
                 [resizeFilter setValue:[NSNumber numberWithFloat:scale] forKey:@"inputScale"];
-                capturedCImage = [resizeFilter outputImage];
+                
+                if (zoomLevel > 0) {
+                    resizedCImage = [resizeFilter outputImage];
+                    
+                    long xPos = (maxWidthResize - capturedWidth) / 2.00000000000000000f;
+                    long yPos = (maxHeightResize - capturedHeight) / 2.00000000000000000f;
+                    
+                    long adjustX = self.cameraRenderController.view.frame.size.width * scaleWidthAdjustment;
+                    long adjustY = self.cameraRenderController.view.frame.size.height * scaleHeightAdjustment;
+                    
+                    xPos += adjustX;   // Make adjustments for preview versus actual capture aspect ratio
+                    yPos -= adjustY;
+                    
+                    CIFilter *cropFilter = [CIFilter filterWithName:@"CICrop"];
+                    CIVector *cropRect = [CIVector vectorWithX:xPos Y:yPos Z:capturedWidth W:capturedHeight];
+                    [cropFilter setValue:resizedCImage forKey:kCIInputImageKey];
+                    [cropFilter setValue:cropRect forKey:@"inputRectangle"];
+                    
+                    capturedCImage = [cropFilter outputImage];
+                } else {
+                    capturedCImage = [resizeFilter outputImage];
+                }
+                
             } else {
                 capturedCImage = [[CIImage alloc] initWithCGImage:[capturedImage CGImage]];
             }
