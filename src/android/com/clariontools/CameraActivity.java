@@ -164,7 +164,7 @@ public class CameraActivity extends Fragment {
         if (cameraParameters != null) {
             mCamera.setParameters(cameraParameters);
         }
-        
+
         cameraCurrentlyLocked = defaultCameraId;
         
         if(mPreview.mPreviewSize == null){
@@ -281,7 +281,7 @@ public class CameraActivity extends Fragment {
         return getActivity().getApplicationContext().getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_FRONT);
     }
     
-    public Bitmap cropBitmap(Bitmap bitmap, Rect rect){
+    public Bitmap cropBitmap(Bitmap bitmap, Rect rect) {
         int w = rect.right - rect.left;
         int h = rect.bottom - rect.top;
         Bitmap ret = Bitmap.createBitmap(w, h, bitmap.getConfig());
@@ -290,7 +290,7 @@ public class CameraActivity extends Fragment {
         return ret;
     }
     
-    public void takePicture(final double maxWidth, final double maxHeight, final int quality){
+    public void takePicture(final double maxWidth, final double maxHeight, final int quality) {
         final ImageView pictureView = (ImageView) view.findViewById(getResources().getIdentifier("picture_view", "id", appResourcesPackage));
         if(mPreview != null) {
             
@@ -360,11 +360,23 @@ public class CameraActivity extends Fragment {
                     }
                 }
             };
+
+            getActivity().runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    mCamera.cancelAutoFocus();
+                    mCamera.autoFocus(new Camera.AutoFocusCallback() {
+                        @Override
+                        public void onAutoFocus(boolean success, Camera camera) {
+                            Log.d(TAG, "AutoFocusCallback returned onAutoFocus with value: " + String.valueOf(success));
+                            // Take the picture when auto focus has completed
+                            mCamera.takePicture(null, null, mPicture);
+                        }
+                    });
+                }
+            });
             
-            mCamera.takePicture(null, null, mPicture);
-            
-        }
-        else{
+        } else {
             canTakePicture = true;
         }
     }
@@ -417,14 +429,53 @@ public class CameraActivity extends Fragment {
     public void onDestroy() {
         super.onDestroy();
     }
-    
-    public void setFlashMode(String mode) {
+
+    public void setFlashMode(int mode) {
         final Camera.Parameters parameters = mCamera.getParameters();
-        if (!parameters.getSupportedFlashModes().contains(mode)) {
-            throw new IllegalArgumentException("Unsupported flash mode "+ mode);
+        boolean validFlashModeFound = false;
+        
+        switch (mode) {
+            case 0:
+                if (parameters.getSupportedFlashModes().contains(Camera.Parameters.FLASH_MODE_AUTO)) {
+                    parameters.setFlashMode(Camera.Parameters.FLASH_MODE_AUTO);
+                    validFlashModeFound = true;
+                }
+                break;
+            case 1:
+                if (parameters.getSupportedFlashModes().contains(Camera.Parameters.FLASH_MODE_ON)) {
+                    parameters.setFlashMode(Camera.Parameters.FLASH_MODE_ON);
+                    validFlashModeFound = true;
+                }
+                break;
+            case 2:
+                if (parameters.getSupportedFlashModes().contains(Camera.Parameters.FLASH_MODE_OFF)) {
+                    parameters.setFlashMode(Camera.Parameters.FLASH_MODE_OFF);
+                    validFlashModeFound = true;
+                }
+                break;
+            case 3:
+                if (parameters.getSupportedFlashModes().contains(Camera.Parameters.FLASH_MODE_TORCH)) {
+                    parameters.setFlashMode(Camera.Parameters.FLASH_MODE_TORCH);
+                    validFlashModeFound = true;
+                }
+                break;
+            default:
+                break;
+                // Do nothing if error because we did not set any mode
         }
-        parameters.setFlashMode(mode);
-        mCamera.setParameters(parameters);
+
+        if ( validFlashModeFound ) {
+            Log.d(TAG, "From public setFlashMode going to setFlashMode with mode: " + mode);
+            mCamera.setParameters(parameters);
+        } else {
+            Log.d(TAG, "From public setFlashMode valid mode was not passed, mode value: " + mode);
+            mode = -1;
+        }
+
+        if (mPreview != null) {
+            mPreview.flashMode = mode;
+        }
+
     }
 
     public void setZoom(int zoom) {
@@ -444,13 +495,14 @@ public class CameraActivity extends Fragment {
             }
             Log.d(TAG, "From public setZoom goint to setZoom with zoom: " + String.valueOf(zoom));
             if (mPreview != null) {
+                Log.d(TAG, "From public setZoom mPreview is active!");
                 mPreview.zoomLevel = zoom;
             }
             parameters.setZoom(zoom);
             mCamera.setParameters(parameters);
         }
     }
-    
+
     public static class SimpleOrientationListener extends OrientationEventListener {
         
         private volatile int defaultScreenOrientation = Configuration.ORIENTATION_UNDEFINED;
@@ -554,6 +606,7 @@ class Preview extends RelativeLayout implements SurfaceHolder.Callback {
     private final String TAG = "Preview";
     
     public int zoomLevel;
+    public int flashMode;
     
     CustomSurfaceView mSurfaceView;
     SurfaceHolder mHolder;
@@ -597,14 +650,45 @@ class Preview extends RelativeLayout implements SurfaceHolder.Callback {
                 Log.d(TAG, "Supported preview size: " + s.width + "x" + s.height);
             }
             
-            setCameraDisplayOrientation();
+            setCameraDisplayOrientation();            
+            // Get the camera parameters
+            Camera.Parameters params = mCamera.getParameters();
             
             Log.d(TAG, "setting camera in FOCUS MODE CONTINUOUS PICTURE");
-            Camera.Parameters params = mCamera.getParameters();
-            params.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE);
+            if (params.getSupportedFocusModes().contains(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE)) {
+                params.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE);
+            } else if (params.getSupportedFocusModes().contains(Camera.Parameters.FOCUS_MODE_AUTO)) {
+                params.setFocusMode(Camera.Parameters.FOCUS_MODE_AUTO);
+            }
             
+            Log.d(TAG, "setting camera flash mode to " + this.flashMode + " as requested.");
+            // If flashMode is -1 don't bother to try and set the flash mode call to CameraActivity checks for valid modes
+            if (this.flashMode != -1) {
+                switch (this.flashMode) {
+                    case 0:
+                        params.setFlashMode(Camera.Parameters.FLASH_MODE_AUTO);
+                        break;
+                    case 1:
+                        params.setFlashMode(Camera.Parameters.FLASH_MODE_ON);
+                        break;
+                    case 2:
+                        params.setFlashMode(Camera.Parameters.FLASH_MODE_OFF);
+                        break;
+                    case 3:
+                        params.setFlashMode(Camera.Parameters.FLASH_MODE_TORCH);
+                        break;
+                    default:
+                        // shouldn't get here but don't set anything if you do
+                        break;
+                }
+            }
+
             Log.d(TAG, "setting camera zoom level to current level " + this.zoomLevel + " as requested.");
-            params.setZoom(this.zoomLevel);
+            if (params.isZoomSupported()) {
+                params.setZoom(this.zoomLevel);
+            }
+
+            // set parameters based on params modifications made above;
             mCamera.setParameters(params);
         }
     }
@@ -925,7 +1009,3 @@ class CustomSurfaceView extends SurfaceView implements SurfaceHolder.Callback{
     public void surfaceDestroyed(SurfaceHolder holder) {
     }
 }
-
-
-
-

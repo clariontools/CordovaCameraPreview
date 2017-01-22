@@ -17,6 +17,7 @@ Published for testing integration specifically targeting the Meteor JavaScript A
   <li>Set the camera flash mode to off, on, or auto.</li>
   <li>Set the quality of the saved JPEG capture file.</li>
   <li>Set the camera zoom.</li>
+  <li>Auto focus with detection before picture taken.</li>
   <li>Maintain HTML interactivity.</li>
 </ul>
 
@@ -31,7 +32,7 @@ cordova plugin add https://github.com/clariontools/CordovaCameraPreview.git
 <b>Phonegap Build:</b><br/>
 
 ```
-<gap:plugin name="com.clariontools.camerapreview" version="0.0.12" source="plugins.cordova.io" />
+<gap:plugin name="com.clariontools.camerapreview" version="0.0.13" source="plugins.cordova.io" />
 ```
 
 <p><b>Methods:</b></p>
@@ -120,6 +121,17 @@ takePicturePromise.then(function (result) {
     console.log('Error from takePicture: ' + err);
 });
 
+```
+
+<b>setOnCameraPreviewReadyHandler(callback)</b><br/>
+<info>Register a callback function that receives notification that the camera preview is ready. Use this to make property settings to the preview that would otherwise fail if called before the preview has been instantiated.</info><br/>
+
+```
+cordova.plugins.camerapreview.setOnCameraPreviewReadyHandler(function(result){
+    console.log('camera preview is ready!  Result: ' + result);
+    setCameraFlashMode(cameraFlashMode);
+    // getZoomLevels etc...
+});
 ```
 
 <b>setOnPictureTakenHandler(callback)</b><br/>

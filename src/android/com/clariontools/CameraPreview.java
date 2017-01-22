@@ -3,11 +3,12 @@ package com.clariontools;
 import android.app.FragmentManager;
 import android.app.FragmentTransaction;
 import android.hardware.Camera;
-import android.util.DisplayMetrics;
-import android.util.Log;
+import android.util.DisplayMetrics;import android.util.Log;
 import android.util.TypedValue;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
+import android.Manifest;
+import android.content.pm.PackageManager;
 
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaPlugin;
@@ -17,6 +18,7 @@ import org.json.JSONObject;
 import org.json.JSONException;
 
 import java.util.List;
+import java.util.Arrays;
 
 public class CameraPreview extends CordovaPlugin implements CameraActivity.CameraPreviewListener {
     
@@ -38,6 +40,16 @@ public class CameraPreview extends CordovaPlugin implements CameraActivity.Camer
     private CallbackContext cameraPreviewReadyCallbackContext;
     private int containerViewId = 1;
     
+    private final String [] permissions = {
+        Manifest.permission.CAMERA,
+        Manifest.permission.READ_EXTERNAL_STORAGE,
+        Manifest.permission.WRITE_EXTERNAL_STORAGE
+    };
+    
+    private final int permissionsReqId = 0;
+    private CallbackContext execCallback;
+    private JSONArray execArgs;
+    
     public CameraPreview(){
         super();
         Log.d(TAG, "Constructing");
@@ -46,14 +58,22 @@ public class CameraPreview extends CordovaPlugin implements CameraActivity.Camer
     @Override
     public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
         
-        if (setOnPictureTakenHandlerAction.equals(action)){
+        if (setOnPictureTakenHandlerAction.equals(action)) {
             return setOnPictureTakenHandler(args, callbackContext);
         }
-        else if (setOnCameraPreviewReadyHandlerAction.equals(action)){
+        else if (setOnCameraPreviewReadyHandlerAction.equals(action)) {
             return setOnCameraPreviewReadyHandler(args, callbackContext);
         }
-        else if (startCameraAction.equals(action)){
-            return startCamera(args, callbackContext);
+        else if (startCameraAction.equals(action)) {
+            if (cordova.hasPermission(permissions[0])) {
+                // Only call startCamera if permision has been granted
+                return startCamera(args, callbackContext);
+            } else {
+                // Otherwise request permissions
+                execCallback = callbackContext;
+                execArgs = args;
+                cordova.requestPermissions(this, permissionsReqId, permissions);
+            }
         }
         else if (takePictureAction.equals(action)){
             return takePicture(args, callbackContext);
@@ -202,7 +222,7 @@ public class CameraPreview extends CordovaPlugin implements CameraActivity.Camer
         cameraPreviewReadyCallbackContext.sendPluginResult(pluginResult);
         Log.d(TAG, "Called onCameraPreviewReady.");
     }
-    
+
     private boolean stopCamera(final JSONArray args, CallbackContext callbackContext) {
         if(fragment == null) {
             Log.d(TAG, "ERROR: Called stop camera but not fragment found!");
@@ -269,22 +289,7 @@ public class CameraPreview extends CordovaPlugin implements CameraActivity.Camer
     private boolean setFlashMode(final JSONArray args, CallbackContext callbackContext) {
         try {
             int mode = args.getInt(0);
-            switch (mode) {
-                case 0:
-                    fragment.setFlashMode(Camera.Parameters.FLASH_MODE_AUTO);
-                    break;
-                case 1:
-                    fragment.setFlashMode(Camera.Parameters.FLASH_MODE_ON);
-                    break;
-                case 2:
-                    fragment.setFlashMode(Camera.Parameters.FLASH_MODE_OFF);
-                    break;
-                case 3:
-                    fragment.setFlashMode(Camera.Parameters.FLASH_MODE_TORCH);
-                    break;
-                default:
-                    throw new IllegalArgumentException(String.format("Unknown flash mode %d", mode));
-            }
+            fragment.setFlashMode(mode);
             return true;
         } catch (JSONException ex) {
             throw new IllegalArgumentException(ex);
@@ -449,5 +454,18 @@ public class CameraPreview extends CordovaPlugin implements CameraActivity.Camer
         return true;
     }
     
+    // Once permission has been requested, start the camera if permission was granted
+    @Override
+    public void onRequestPermissionResult(int requestCode, String[] permissions, int[] grantResults) throws JSONException {
+        for (int r:grantResults) {
+            if (r == PackageManager.PERMISSION_DENIED) {
+                execCallback.sendPluginResult(new PluginResult(PluginResult.Status.ILLEGAL_ACCESS_EXCEPTION));
+                return;
+            }
+        }
+        if (requestCode == permissionsReqId) {
+            startCamera(execArgs, execCallback);
+        }
+    }
+    
 }
-
