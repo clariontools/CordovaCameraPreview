@@ -21,7 +21,7 @@ Published for testing integration specifically targeting the Meteor JavaScript A
   <li>Maintain HTML interactivity.</li>
 </ul>
 
-<p><b>Version 0.0.12</b></p>
+<p><b>Version 0.0.13</b></p>
 
 <p><b>Installation:</b></p>
 
