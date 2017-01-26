@@ -361,20 +361,16 @@ public class CameraActivity extends Fragment {
                 }
             };
 
-            getActivity().runOnUiThread(new Runnable() {
+            final Camera.AutoFocusCallback _pfnAutoFocusCallback = new Camera.AutoFocusCallback() {
+                
                 @Override
-                public void run() {
-                    mCamera.cancelAutoFocus();
-                    mCamera.autoFocus(new Camera.AutoFocusCallback() {
-                        @Override
-                        public void onAutoFocus(boolean success, Camera camera) {
-                            Log.d(TAG, "AutoFocusCallback returned onAutoFocus with value: " + String.valueOf(success));
-                            // Take the picture when auto focus has completed
-                            mCamera.takePicture(null, null, mPicture);
-                        }
-                    });
+                public void onAutoFocus(boolean success, Camera camera) {
+                    Log.d(TAG, "AutoFocusCallback returned onAutoFocus with value: " + String.valueOf(success));
+                    mCamera.autoFocus(null);                    // If another autoFocus event is fired make sure we don't return back here
+                    mCamera.takePicture(null, null, mPicture);  // Take the picture could add code if success false to refocus if needed
                 }
-            });
+            };
+            mCamera.autoFocus(_pfnAutoFocusCallback); // to start or check current focus in auto or continuous focus mode.
             
         } else {
             canTakePicture = true;
