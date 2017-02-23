@@ -95,6 +95,11 @@
             [self.commandDelegate sendPluginResult:pluginResult callbackId:self.onCameraPreviewReadyHandlerId];
         });
         
+        // Report back the current orientation on startup
+        UIDeviceOrientation currentOrientation = [[UIDevice currentDevice] orientation];
+        NSLog(@"STARTUP ORIENTATION: %ld", (long)currentOrientation );
+        
+        
     } else {
         pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Invalid number of parameters"];
     }
@@ -234,6 +239,16 @@
     self.onPictureTakenHandlerId = command.callbackId;
 }
 
+- (void) setOnCameraDebugMessageHandler:(CDVInvokedUrlCommand*)command {
+    NSLog(@"setOnCameraDebugMessageHandler");
+    self.onCameraDebugMessageHandlerId = command.callbackId;
+}
+
+- (void) setOnOrientationChangeHandler:(CDVInvokedUrlCommand*)command {
+    NSLog(@"setOnOrientationChangeHandler");
+    self.onOrientationChangeHandlerId = command.callbackId;
+}
+
 - (void) setColorEffect:(CDVInvokedUrlCommand*)command {
     NSLog(@"setColorEffect");
     CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
@@ -277,6 +292,14 @@
 - (void) setFlashMode:(CDVInvokedUrlCommand*)command {
     NSInteger mode = [command.arguments[0] integerValue];
     [self.sessionManager setFlashMode:mode];
+}
+
+- (void) setCameraOrientation:(CDVInvokedUrlCommand*)command {
+    NSInteger orientation = [command.arguments[0] integerValue];
+}
+    
+- (void) setCameraDebugMessageLogging:(CDVInvokedUrlCommand*)command {
+    NSInteger debugLevel = [command.arguments[0] integerValue];
 }
 
 - (void) invokeTakePicture:(CDVInvokedUrlCommand *)command {
@@ -357,7 +380,7 @@
             long zoomLevel = self.cameraRenderController.zoomLevel;
             
             if (self.imageWasRotated == true) {
-                NSLog(@"image WAS rotaed.");
+                NSLog(@"image WAS rotated.");
                 maxWidthResize = maxHeight;
                 maxHeightResize = maxWidth;
             }
@@ -483,6 +506,17 @@
                 CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsArray:params];
                 [pluginResult setKeepCallbackAsBool:true];
                 [self.commandDelegate sendPluginResult:pluginResult callbackId:self.onPictureTakenHandlerId];
+                
+                // for testing...
+                //NSMutableArray *params = [[NSMutableArray alloc] init];
+                //CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsArray:params];
+                [pluginResult setKeepCallbackAsBool:true];
+                [self.commandDelegate sendPluginResult:pluginResult callbackId:self.onCameraDebugMessageHandlerId];
+                
+                //CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsArray:params];
+                [pluginResult setKeepCallbackAsBool:true];
+                [self.commandDelegate sendPluginResult:pluginResult callbackId:self.onOrientationChangeHandlerId];
+
             });
         }
     }];

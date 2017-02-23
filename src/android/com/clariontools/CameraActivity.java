@@ -6,7 +6,9 @@ import android.content.Context;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
+import android.graphics.Bitmap.Config;
 import android.graphics.BitmapFactory;
+import android.graphics.BitmapFactory.Options;
 import android.graphics.Canvas;
 import android.graphics.ImageFormat;
 import android.graphics.Matrix;
@@ -47,16 +49,20 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class CameraActivity extends Fragment {
     
+    private static final String TAG = "CameraActivity";
+
     public static final int FREE_ROTATION = -1;
     
     public interface CameraPreviewListener {
         public void onPictureTaken(String originalPicturePath);
         public void onCameraPreviewReady();
+        public void onCameraDebugMessage(String msg);
+        public void onOrientationChange(String orientation);
     }
     
     private CameraPreviewListener eventListener;
     private SimpleOrientationListener orientationListener;
-    private static final String TAG = "CameraActivity";
+    
     public FrameLayout mainLayout;
     public FrameLayout frameContainerLayout;
     
@@ -81,10 +87,23 @@ public class CameraActivity extends Fragment {
     public int x;
     public int y;
     
+    public int initialOrientation = 0;
+    public int debugLevel = 0;
+    
     public void setEventListener(CameraPreviewListener listener){
         eventListener = listener;
     }
     
+    public void sendCameraDebugMessage(final String msg, final int requestLevel) {
+        if (requestLevel == 0 || (requestLevel == 1 && this.debugLevel == 1)) {
+            new Thread() {
+                public void run() {
+                    eventListener.onCameraDebugMessage(msg);
+                }
+            }.start();
+        }
+    }
+
     private String appResourcesPackage;
     
     @Override
@@ -113,6 +132,8 @@ public class CameraActivity extends Fragment {
         
         if (orientationListener == null && lockRotation == FREE_ROTATION) {
             orientationListener = new SimpleOrientationListener(this.getActivity().getApplicationContext());
+            orientationListener.simpleListener = eventListener;
+            orientationListener.setCurrentOrientation(initialOrientation);
         }
         
         if(mPreview == null) {
@@ -126,6 +147,8 @@ public class CameraActivity extends Fragment {
             
             //video view
             mPreview = new Preview(getActivity());
+            mPreview.mPreviewListener = eventListener;
+            mPreview.debugLevel = this.debugLevel;
             mPreview.maxCaptureLength = maxCaptureLength;
             mainLayout = (FrameLayout) view.findViewById(getResources().getIdentifier("video_view", "id", appResourcesPackage));
             mainLayout.setLayoutParams(new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.MATCH_PARENT, RelativeLayout.LayoutParams.MATCH_PARENT));
@@ -182,7 +205,7 @@ public class CameraActivity extends Fragment {
                eventListener.onCameraPreviewReady();
             }
         }.start();
-        
+
         final FrameLayout frameContainerLayout = (FrameLayout) view.findViewById(getResources().getIdentifier("frame_container", "id", appResourcesPackage));
         ViewTreeObserver viewTreeObserver = frameContainerLayout.getViewTreeObserver();
         if (viewTreeObserver.isAlive()) {
@@ -289,6 +312,14 @@ public class CameraActivity extends Fragment {
         canvas.drawBitmap(bitmap, -rect.left, -rect.top, null);
         return ret;
     }
+
+    private void sendOnPictureTaken(final String pictureFile) {
+        new Thread() {
+            public void run() {
+                eventListener.onPictureTaken(pictureFile);
+            }
+        }.start();
+    }
     
     public void takePicture(final double maxWidth, final double maxHeight, final int quality) {
         final ImageView pictureView = (ImageView) view.findViewById(getResources().getIdentifier("picture_view", "id", appResourcesPackage));
@@ -309,8 +340,15 @@ public class CameraActivity extends Fragment {
                     ? lockRotation
                     : orientationListener.getCurrentOrientation();
                     Log.d(TAG, "Current device orientation: " + orientation);
-                    
+
                     final Bitmap bitmap = BitmapFactory.decodeByteArray(data, 0, data.length);
+                    if ( bitmap == null ) {
+                        sendCameraDebugMessage("NOPIC: Camera image of " + data.length + " bytes could not be decoded.",0);
+                        sendOnPictureTaken("");
+                        canTakePicture = true;
+                        return;
+                    }
+
                     final Matrix matrix = new Matrix();
                     switch(orientation){
                         case Surface.ROTATION_0:
@@ -333,11 +371,22 @@ public class CameraActivity extends Fragment {
                             matrix.postRotate(0);
                             Log.d(TAG, "Rotating 0° (unknown orientation)");
                     }
+
+                    Log.d(TAG, "Before Bitmap rotated");
                     final Bitmap rotated = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
+                    if (rotated == null) {
+                        sendCameraDebugMessage("NOPIC: Rotated image could not be created.",0);
+                        sendOnPictureTaken("");
+                        canTakePicture = true;
+                        return;
+                    }
+                    Log.d(TAG, "After Bitmap rotated");
                     
                     final File pictureFile = getOutputMediaFile(filePrefix, "");
                     if (pictureFile == null) {
-                        Log.d(TAG, "Cannot save a null picture ");
+                        Log.d(TAG, "Cannot save picture with a null filename.");
+                        sendCameraDebugMessage("NOPIC: Picture filename could not be created.",0);
+                        sendOnPictureTaken("");
                         canTakePicture = true;
                         return;
                     }
@@ -346,11 +395,7 @@ public class CameraActivity extends Fragment {
                         FileOutputStream fos = new FileOutputStream(pictureFile);
                         rotated.compress(Bitmap.CompressFormat.JPEG, quality, fos);
                         fos.close();
-                        new Thread() {
-                            public void run() {
-                                eventListener.onPictureTaken(pictureFile.getAbsolutePath());
-                            }
-                        }.start();
+                        sendOnPictureTaken(pictureFile.getAbsolutePath());
                     } catch (FileNotFoundException e) {
                         Log.d(TAG, "File not found: " + e.getMessage());
                     } catch (IOException e) {
@@ -366,6 +411,7 @@ public class CameraActivity extends Fragment {
                 @Override
                 public void onAutoFocus(boolean success, Camera camera) {
                     Log.d(TAG, "AutoFocusCallback returned onAutoFocus with value: " + String.valueOf(success));
+                    sendCameraDebugMessage("AutoFocusCallback returned: " + String.valueOf(success),1);
                     mCamera.autoFocus(null);                    // If another autoFocus event is fired make sure we don't return back here
                     mCamera.takePicture(null, null, mPicture);  // Take the picture could add code if success false to refocus if needed
                 }
@@ -473,7 +519,18 @@ public class CameraActivity extends Fragment {
         }
 
     }
-
+    
+    public void setCameraOrientation(int orientation) {
+        this.initialOrientation = orientation;
+    }
+    
+    public void setCameraDebugMessageLogging(int level) {
+        this.debugLevel = level;
+        if (mPreview != null) {
+            mPreview.debugLevel = level;
+        }
+    }
+    
     public void setZoom(int zoom) {
         final Camera.Parameters parameters = mCamera.getParameters();
         if (parameters.isZoomSupported()) {
@@ -500,6 +557,8 @@ public class CameraActivity extends Fragment {
     }
 
     public static class SimpleOrientationListener extends OrientationEventListener {
+
+        public CameraPreviewListener simpleListener;
         
         private volatile int defaultScreenOrientation = Configuration.ORIENTATION_UNDEFINED;
         public int prevOrientation = OrientationEventListener.ORIENTATION_UNKNOWN;
@@ -516,10 +575,19 @@ public class CameraActivity extends Fragment {
             super(context, rate);
             ctx = context;
         }
+
+        public void sendOrientationChange(final String msg) {
+            new Thread() {
+                public void run() {
+                    simpleListener.onOrientationChange(msg);
+                }
+            }.start();
+        }
         
         @Override
         public void onOrientationChanged(final int rotation) {
             int normalizedRotation = OrientationEventListener.ORIENTATION_UNKNOWN;
+            int standardizedRotation = 0;   // Standardize codes with iOS
             if (rotation >= 330 || rotation < 30) {
                 normalizedRotation = Surface.ROTATION_0;
             } else if (rotation >= 60 && rotation < 120) {
@@ -532,8 +600,21 @@ public class CameraActivity extends Fragment {
             
             if (prevOrientation != normalizedRotation && rotation != OrientationEventListener.ORIENTATION_UNKNOWN) {
                 prevOrientation = normalizedRotation;
-                if (normalizedRotation != OrientationEventListener.ORIENTATION_UNKNOWN)
-                    currentOrientation = normalizedRotation;
+                if (normalizedRotation != OrientationEventListener.ORIENTATION_UNKNOWN) {
+                    if (normalizedRotation != currentOrientation) {
+                        currentOrientation = normalizedRotation;
+                        standardizedRotation = currentOrientation;
+                        switch (standardizedRotation) {
+                            case 0: standardizedRotation = 1;
+                                break;
+                            case 1: standardizedRotation = 4;
+                                break;
+                            default:
+                                break;
+                        }
+                        sendOrientationChange(String.valueOf(standardizedRotation));
+                    }
+                }
             }
             
         }
@@ -594,6 +675,9 @@ public class CameraActivity extends Fragment {
         public int getCurrentOrientation() {
             return currentOrientation;
         }
+        public void setCurrentOrientation(int orientation) {
+            currentOrientation = orientation;
+        }
         
     }
 }
@@ -601,8 +685,10 @@ public class CameraActivity extends Fragment {
 class Preview extends RelativeLayout implements SurfaceHolder.Callback {
     private final String TAG = "Preview";
     
+    public CameraActivity.CameraPreviewListener mPreviewListener;
     public int zoomLevel;
     public int flashMode;
+    public int debugLevel;
     
     CustomSurfaceView mSurfaceView;
     SurfaceHolder mHolder;
@@ -630,6 +716,16 @@ class Preview extends RelativeLayout implements SurfaceHolder.Callback {
         mHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
     }
     
+    public void sendCameraDebugMessage(final String msg, final int requestLevel) {
+        if (requestLevel == 0 || (requestLevel == 1 && this.debugLevel == 1)) {
+            new Thread() {
+                public void run() {
+                    mPreviewListener.onCameraDebugMessage(msg);
+                }
+            }.start();
+        }
+    }
+
     public void setCamera(Camera camera, int cameraId) {
         mCamera = camera;
         this.cameraId = cameraId;
@@ -652,9 +748,13 @@ class Preview extends RelativeLayout implements SurfaceHolder.Callback {
             
             Log.d(TAG, "setting camera in FOCUS MODE CONTINUOUS PICTURE");
             if (params.getSupportedFocusModes().contains(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE)) {
+                sendCameraDebugMessage("Setting camera in FOCUS_MODE_CONTINUOUS_PICTURE",1);
                 params.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE);
             } else if (params.getSupportedFocusModes().contains(Camera.Parameters.FOCUS_MODE_AUTO)) {
+                sendCameraDebugMessage("Setting camera in FOCUS_MODE_AUTO",1);
                 params.setFocusMode(Camera.Parameters.FOCUS_MODE_AUTO);
+            } else {
+                sendCameraDebugMessage("ERROR: No Supported Focus Modes detected on camera.",1);
             }
             
             Log.d(TAG, "setting camera flash mode to " + this.flashMode + " as requested.");

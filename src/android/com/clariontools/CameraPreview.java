@@ -25,6 +25,8 @@ public class CameraPreview extends CordovaPlugin implements CameraActivity.Camer
     private final String TAG = "CameraPreview";
     private final String setOnPictureTakenHandlerAction = "setOnPictureTakenHandler";
     private final String setOnCameraPreviewReadyHandlerAction = "setOnCameraPreviewReadyHandler";
+    private final String setOnOrientationChangeHandlerAction = "setOnOrientationChangeHandler";
+    private final String setOnCameraDebugMessageHandlerAction = "setOnCameraDebugMessageHandler";
     private final String startCameraAction = "startCamera";
     private final String stopCameraAction = "stopCamera";
     private final String switchCameraAction = "switchCamera";
@@ -33,11 +35,15 @@ public class CameraPreview extends CordovaPlugin implements CameraActivity.Camer
     private final String hideCameraAction = "hideCamera";
     private final String setFlashModeAction = "setFlashMode";
     private final String setZoomLevelAction = "setZoomLevel";
+    private final String setCameraOrientationAction = "setCameraOrientation";
+    private final String setCameraDebugMessageLoggingAction = "setCameraDebugMessageLogging";
     private final String getZoomLevelsAction = "getZoomLevels";
     
     private CameraActivity fragment;
     private CallbackContext takePictureCallbackContext;
     private CallbackContext cameraPreviewReadyCallbackContext;
+    private CallbackContext orientationChangeCallbackContext;
+    private CallbackContext cameraDebugMessageCallbackContext;
     private int containerViewId = 1;
     
     private final String [] permissions = {
@@ -63,6 +69,12 @@ public class CameraPreview extends CordovaPlugin implements CameraActivity.Camer
         }
         else if (setOnCameraPreviewReadyHandlerAction.equals(action)) {
             return setOnCameraPreviewReadyHandler(args, callbackContext);
+        }
+        else if (setOnOrientationChangeHandlerAction.equals(action)) {
+            return setOnOrientationChangeHandler(args, callbackContext);
+        }
+        else if (setOnCameraDebugMessageHandlerAction.equals(action)) {
+            return setOnCameraDebugMessageHandler(args, callbackContext);
         }
         else if (startCameraAction.equals(action)) {
             if (cordova.hasPermission(permissions[0])) {
@@ -95,6 +107,12 @@ public class CameraPreview extends CordovaPlugin implements CameraActivity.Camer
         }
         else if (setZoomLevelAction.equals(action)) {
             return setZoomLevel(args, callbackContext);
+        }
+        else if (setCameraOrientationAction.equals(action)) {
+            return setCameraOrientation(args, callbackContext);
+        }
+        else if (setCameraDebugMessageLoggingAction.equals(action)) {
+            return setCameraDebugMessageLogging(args, callbackContext);
         }
         else if (getZoomLevelsAction.equals(action)) {
             return getZoomLevels(args, callbackContext);
@@ -223,6 +241,28 @@ public class CameraPreview extends CordovaPlugin implements CameraActivity.Camer
         Log.d(TAG, "Called onCameraPreviewReady.");
     }
 
+    public void onOrientationChange(String orientation) {
+        
+        JSONArray data = new JSONArray();
+        data.put(orientation);
+        
+        PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, data);
+        pluginResult.setKeepCallback(true);
+        orientationChangeCallbackContext.sendPluginResult(pluginResult);
+        Log.d(TAG, "Called onOrientationChange.");
+    }
+
+    public void onCameraDebugMessage(String msg) {
+        
+        JSONArray data = new JSONArray();
+        data.put(msg);
+        
+        PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, data);
+        pluginResult.setKeepCallback(true);
+        cameraDebugMessageCallbackContext.sendPluginResult(pluginResult);
+        Log.d(TAG, "Called onCameraDebugMessage.");
+    }
+
     private boolean stopCamera(final JSONArray args, CallbackContext callbackContext) {
         if(fragment == null) {
             Log.d(TAG, "ERROR: Called stop camera but not fragment found!");
@@ -285,7 +325,19 @@ public class CameraPreview extends CordovaPlugin implements CameraActivity.Camer
         cameraPreviewReadyCallbackContext = callbackContext;
         return true;
     }
-    
+
+    private boolean setOnOrientationChangeHandler(JSONArray args, CallbackContext callbackContext) {
+        Log.d(TAG, "setOnOrientationChangeHandler");
+        orientationChangeCallbackContext = callbackContext;
+        return true;
+    }
+
+    private boolean setOnCameraDebugMessageHandler(JSONArray args, CallbackContext callbackContext) {
+        Log.d(TAG, "setOnCameraDebugMessageHandler");
+        cameraDebugMessageCallbackContext = callbackContext;
+        return true;
+    }
+
     private boolean setFlashMode(final JSONArray args, CallbackContext callbackContext) {
         try {
             int mode = args.getInt(0);
@@ -296,6 +348,26 @@ public class CameraPreview extends CordovaPlugin implements CameraActivity.Camer
         }
     }
     
+    private boolean setCameraOrientation(final JSONArray args, CallbackContext callbackContext) {
+        try {
+            int orientation = args.getInt(0);
+            fragment.setCameraOrientation(orientation);
+            return true;
+        } catch (JSONException ex) {
+            throw new IllegalArgumentException(ex);
+        }
+    }
+
+    private boolean setCameraDebugMessageLogging(final JSONArray args, CallbackContext callbackContext) {
+        try {
+            int debugLevel = args.getInt(0);
+            fragment.setCameraDebugMessageLogging(debugLevel);
+            return true;
+        } catch (JSONException ex) {
+            throw new IllegalArgumentException(ex);
+        }
+    }
+
     private boolean setZoomLevel(final JSONArray args, CallbackContext callbackContext) {
         try {
             int zoom = args.getInt(0);

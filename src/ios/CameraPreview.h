@@ -14,8 +14,12 @@
 - (void) switchCamera:(CDVInvokedUrlCommand*)command;
 - (void) takePicture:(CDVInvokedUrlCommand*)command;
 - (void) setOnPictureTakenHandler:(CDVInvokedUrlCommand*)command;
+- (void) setOnCameraDebugMessageHandler:(CDVInvokedUrlCommand*)command;
+- (void) setOnOrientationChangeHandler:(CDVInvokedUrlCommand*)command;
 - (void) setColorEffect:(CDVInvokedUrlCommand*)command;
 - (void) setFlashMode:(CDVInvokedUrlCommand*)command;
+- (void) setCameraOrientation:(CDVInvokedUrlCommand*)command;
+- (void) setCameraDebugMessageLogging:(CDVInvokedUrlCommand*)command;
 - (void) getZoomLevels:(CDVInvokedUrlCommand*)command;
 - (void) setZoomLevel:(CDVInvokedUrlCommand*)command;
 - (void) setOnCameraPreviewReadyHandler:(CDVInvokedUrlCommand*)command;
@@ -27,6 +31,8 @@
 @property (nonatomic) CameraRenderController *cameraRenderController;
 @property (nonatomic) NSString *onPictureTakenHandlerId;
 @property (nonatomic) NSString *onCameraPreviewReadyHandlerId;
+@property (nonatomic) NSString *onCameraDebugMessageHandlerId;
+@property (nonatomic) NSString *onOrientationChangeHandlerId;
 @property (nonatomic) long maxCaptureLength;
 @property (nonatomic) BOOL capturePresetUsed;
 @property (nonatomic) BOOL imageWasRotated;

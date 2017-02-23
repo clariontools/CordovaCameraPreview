@@ -25,6 +25,14 @@ CameraPreview.setOnCameraPreviewReadyHandler = function(onCameraPreviewReady) {
     exec(onCameraPreviewReady, onCameraPreviewReady, PLUGIN_NAME, "setOnCameraPreviewReadyHandler", []);
 };
 
+CameraPreview.setOnOrientationChangeHandler = function(onOrientationChange) {
+    exec(onOrientationChange, onOrientationChange, PLUGIN_NAME, "setOnOrientationChangeHandler", []);
+};
+
+CameraPreview.setOnCameraDebugMessageHandler = function(onCameraDebugMessage) {
+    exec(onCameraDebugMessage, onCameraDebugMessage, PLUGIN_NAME, "setOnCameraDebugMessageHandler", []);
+};
+
 //@param rect {x: 0, y: 0, width: 100, height:100}
 //@param defaultCamera "front" | "back"
 CameraPreview.startCamera = function(rect, defaultCamera, toBack, maxCaptureLength, rotation, alpha, prefix) {
@@ -76,6 +84,16 @@ CameraPreview.setFlashMode = function(mode) {
 CameraPreview.setZoomLevel = function(zoom) {
     if ( typeof zoom === 'undefined') zoom = 0;
     exec(null, null, PLUGIN_NAME, "setZoomLevel", [zoom]);
+};
+
+CameraPreview.setCameraOrientation = function(orientation) {
+    if ( typeof orientation === 'undefined') orientation = 1;
+    exec(null, null, PLUGIN_NAME, "setCameraOrientation", [orientation]);
+};
+
+CameraPreview.setCameraDebugMessageLogging = function(debugLevel) {
+    if ( typeof debugLevel === 'undefined') debugLevel = 0;
+    exec(null, null, PLUGIN_NAME, "setCameraDebugMessageLogging", [debugLevel]);
 };
 
 //@param targetWholeNumbers false

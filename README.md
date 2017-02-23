@@ -18,10 +18,11 @@ Published for testing integration specifically targeting the Meteor JavaScript A
   <li>Set the quality of the saved JPEG capture file.</li>
   <li>Set the camera zoom.</li>
   <li>Auto focus with detection before picture taken.</li>
+  <li>Orientation and Debug Messages, need to document, in progress...</li>
   <li>Maintain HTML interactivity.</li>
 </ul>
 
-<p><b>Version 0.0.14</b></p>
+<p><b>Version 0.0.15</b></p>
 
 <p><b>Installation:</b></p>
 
@@ -32,7 +33,7 @@ cordova plugin add https://github.com/clariontools/CordovaCameraPreview.git
 <b>Phonegap Build:</b><br/>
 
 ```
-<gap:plugin name="com.clariontools.camerapreview" version="0.0.14" source="plugins.cordova.io" />
+<gap:plugin name="com.clariontools.camerapreview" version="0.0.15" source="plugins.cordova.io" />
 ```
 
 <p><b>Methods:</b></p>

@@ -22,8 +22,7 @@
     [self setView:glkView];
 }
 
-- (void)viewDidLoad
-{
+- (void)viewDidLoad {
     [super viewDidLoad];
     
     self.context = [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES2];
@@ -77,6 +76,12 @@
                                              selector:@selector(applicationEnteredForeground:)
                                                  name:UIApplicationWillEnterForegroundNotification
                                                object:nil];
+
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(deviceOrientationDidChange:)
+                                                 name:UIDeviceOrientationDidChangeNotification
+                                               object:nil];
+    [[UIDevice currentDevice] beginGeneratingDeviceOrientationNotifications];
     
     dispatch_async(self.sessionManager.sessionQueue, ^{
         NSLog(@"Starting session");
@@ -86,6 +91,9 @@
 
 - (void) viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
+    
+    [[UIDevice currentDevice] endGeneratingDeviceOrientationNotifications];
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:UIDeviceOrientationDidChangeNotification object:nil];
     
     [[NSNotificationCenter defaultCenter] removeObserver:self
                                                     name:UIApplicationDidBecomeActiveNotification
@@ -99,6 +107,12 @@
         NSLog(@"Stopping session from viewWillDisappear");
         [self.sessionManager.session stopRunning];
     });
+}
+
+- (void)deviceOrientationDidChange:(NSNotification *)notification {
+    // Get the current device orientation and send value to cordova callback
+    UIDeviceOrientation currentOrientation = [[UIDevice currentDevice] orientation];
+    NSLog(@"ROTATE IN REAL TIME VALUE: %ld", (long)currentOrientation );
 }
 
 - (void) handleTakePictureTap:(UITapGestureRecognizer*)recognizer {

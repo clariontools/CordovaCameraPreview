@@ -35,6 +35,7 @@
         case UIInterfaceOrientationPortrait:
             orientation = AVCaptureVideoOrientationPortrait;
     }
+    
     return orientation;
 }
 - (void) setupSession:(NSString *)defaultCamera
