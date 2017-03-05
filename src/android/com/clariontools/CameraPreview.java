@@ -253,7 +253,7 @@ public class CameraPreview extends CordovaPlugin implements CameraActivity.Camer
     }
 
     public void onCameraDebugMessage(String msg) {
-        
+       
         JSONArray data = new JSONArray();
         data.put(msg);
         

@@ -49,6 +49,7 @@
         //NSLog(@"lockOrientation: %ld", self.lockOrientation);
         //NSLog(@"containerAlpha: %f", containerAlpha);
         //NSLog(@"filePrefix: %@", self.filePrefix);
+        
 
         // Create the session manager
         self.sessionManager = [[CameraSessionManager alloc] init];
@@ -73,6 +74,12 @@
         self.cameraRenderController.view.frame = CGRectMake(x, y, width, height);
         self.cameraRenderController.zoomLevel = 0;
         self.cameraRenderController.delegate = self;
+        self.cameraRenderController.commandDelegate = self.commandDelegate;
+        // Set the default picture orientation should be changed by setCameraOrientation if not locked
+        // This ensures the picture rotation is last known good value when FaceUp, FaceDown, or Unknown
+        self.cameraRenderController.pictureOrientation = self.lockOrientation;
+
+        
         
         [self.viewController addChildViewController:self.cameraRenderController];
         //display the camera bellow the webview
@@ -247,6 +254,7 @@
 - (void) setOnOrientationChangeHandler:(CDVInvokedUrlCommand*)command {
     NSLog(@"setOnOrientationChangeHandler");
     self.onOrientationChangeHandlerId = command.callbackId;
+    self.cameraRenderController.onRenderOrientationChangeHandlerId = self.onOrientationChangeHandlerId;
 }
 
 - (void) setColorEffect:(CDVInvokedUrlCommand*)command {
@@ -296,10 +304,12 @@
 
 - (void) setCameraOrientation:(CDVInvokedUrlCommand*)command {
     NSInteger orientation = [command.arguments[0] integerValue];
+    self.pictureOrientation = orientation;
 }
     
 - (void) setCameraDebugMessageLogging:(CDVInvokedUrlCommand*)command {
-    NSInteger debugLevel = [command.arguments[0] integerValue];
+    NSInteger level = [command.arguments[0] integerValue];
+    self.debugLevel = level;
 }
 
 - (void) invokeTakePicture:(CDVInvokedUrlCommand *)command {
@@ -341,6 +351,11 @@
             
             // Get the current device orientation or lock with a requested orientation
             UIDeviceOrientation currentOrientation = self.lockOrientation != UIDeviceOrientationUnknown ? self.lockOrientation : [[UIDevice currentDevice] orientation];
+            
+            if (currentOrientation == UIDeviceOrientationFaceUp || currentOrientation == UIDeviceOrientationFaceDown || currentOrientation == UIDeviceOrientationUnknown) {
+                // Use the starting or last known picture orientation excluding those that would not qualify for rotation
+                currentOrientation = self.cameraRenderController.pictureOrientation;
+            }
             
             BOOL imageRotated = false;
             CIImage *capturedCImage;

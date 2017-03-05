@@ -37,6 +37,8 @@
 @property (nonatomic) BOOL capturePresetUsed;
 @property (nonatomic) BOOL imageWasRotated;
 @property (nonatomic) UIDeviceOrientation lockOrientation;
+@property (nonatomic) UIDeviceOrientation pictureOrientation;
+@property (nonatomic) NSInteger debugLevel;
 @property (nonatomic) NSString *filePrefix;
 
 @end

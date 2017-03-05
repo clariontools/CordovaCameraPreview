@@ -2,12 +2,12 @@
 #import <CoreVideo/CVOpenGLESTextureCache.h>
 #import <GLKit/GLKit.h>
 #import <OpenGLES/ES2/glext.h>
+#import <Cordova/CDVPlugin.h>
 
 @implementation CameraRenderController
 @synthesize context = _context;
 @synthesize delegate;
-
-
+@synthesize commandDelegate = _commandDelegate;
 
 - (CameraRenderController *)init {
     if (self = [super init]) {
@@ -113,6 +113,20 @@
     // Get the current device orientation and send value to cordova callback
     UIDeviceOrientation currentOrientation = [[UIDevice currentDevice] orientation];
     NSLog(@"ROTATE IN REAL TIME VALUE: %ld", (long)currentOrientation );
+    
+    if (currentOrientation == UIDeviceOrientationFaceUp || currentOrientation == UIDeviceOrientationFaceDown || currentOrientation == UIDeviceOrientationUnknown) {
+        // Exclude these orientation values because the do not translate into valid picture rotation values
+        return;
+    } else if (self.pictureOrientation != currentOrientation) {
+        // Update the CameraPreview variable to use for picture rotation
+        self.pictureOrientation = currentOrientation;
+
+        // Send the rotation value back to the javascript caller
+        NSString *stringCurrentOrientation = [NSString stringWithFormat:@"%ld", (long)currentOrientation];
+        CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:stringCurrentOrientation];
+        [pluginResult setKeepCallbackAsBool:true];
+        [self.commandDelegate sendPluginResult:pluginResult callbackId:_onRenderOrientationChangeHandlerId];
+    }
 }
 
 - (void) handleTakePictureTap:(UITapGestureRecognizer*)recognizer {

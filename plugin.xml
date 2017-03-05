@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<plugin id="com.clariontools.camerapreview" version="0.0.15" xmlns="http://apache.org/cordova/ns/plugins/1.0" xmlns:android="http://schemas.android.com/apk/res/android">
+<plugin id="com.clariontools.camerapreview" version="0.0.16" xmlns="http://apache.org/cordova/ns/plugins/1.0" xmlns:android="http://schemas.android.com/apk/res/android">
     <name>CameraPreview</name>
     <description>Cordova plugin that allows camera interaction from HTML code. Show camera preview popup below or top of the HTML.</description>
     <license>Apache 2.0</license>

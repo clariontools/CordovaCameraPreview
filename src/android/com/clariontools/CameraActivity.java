@@ -51,6 +51,8 @@ public class CameraActivity extends Fragment {
     
     private static final String TAG = "CameraActivity";
 
+    private String appResourcesPackage;
+
     public static final int FREE_ROTATION = -1;
     
     public interface CameraPreviewListener {
@@ -88,11 +90,8 @@ public class CameraActivity extends Fragment {
     public int y;
     
     public int initialOrientation = 0;
-    public int debugLevel = 0;
     
-    public void setEventListener(CameraPreviewListener listener){
-        eventListener = listener;
-    }
+    private int debugLevel;
     
     public void sendCameraDebugMessage(final String msg, final int requestLevel) {
         if (requestLevel == 0 || (requestLevel == 1 && this.debugLevel == 1)) {
@@ -103,12 +102,15 @@ public class CameraActivity extends Fragment {
             }.start();
         }
     }
-
-    private String appResourcesPackage;
+    
+    public void setEventListener(CameraPreviewListener listener){
+        eventListener = listener;
+    }
     
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         appResourcesPackage = getActivity().getPackageName();
+        this.debugLevel = 1;
         
         // Inflate the layout for this fragment
         view = inflater.inflate(getResources().getIdentifier("camera_activity", "layout", appResourcesPackage), container, false);
@@ -147,9 +149,8 @@ public class CameraActivity extends Fragment {
             
             //video view
             mPreview = new Preview(getActivity());
-            mPreview.mPreviewListener = eventListener;
-            mPreview.debugLevel = this.debugLevel;
             mPreview.maxCaptureLength = maxCaptureLength;
+            mPreview.mCameraActivity = this;
             mainLayout = (FrameLayout) view.findViewById(getResources().getIdentifier("video_view", "id", appResourcesPackage));
             mainLayout.setLayoutParams(new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.MATCH_PARENT, RelativeLayout.LayoutParams.MATCH_PARENT));
             mainLayout.addView(mPreview);
@@ -178,6 +179,9 @@ public class CameraActivity extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
+
+        boolean firstCall = true;       // Flag to stop onCameraPreviewReady from firing more than once per startCamera
+
         if (lockRotation == FREE_ROTATION) {
             orientationListener.enable();
         }
@@ -193,18 +197,22 @@ public class CameraActivity extends Fragment {
         if(mPreview.mPreviewSize == null){
             mPreview.setCamera(mCamera, cameraCurrentlyLocked);
         } else {
-            mPreview.switchCamera(mCamera, cameraCurrentlyLocked);
+            sendCameraDebugMessage("onResume returning from onPause WATCH for Fragment exceptions.",1);
+            mPreview.switchCamera(mCamera, cameraCurrentlyLocked);  // Two switchCamera methods mPreview (soft) and one on mCamera (hard)
             mCamera.startPreview();
+            firstCall = false;
         }
         
-        Log.d(TAG, "cameraCurrentlyLocked:" + cameraCurrentlyLocked);
+        Log.d(TAG, "cameraCurrentlyLocked: " + cameraCurrentlyLocked);
 
         // tell javascript callback that the preview is ready and the camera parameters can be queried
-        new Thread() {
-            public void run() {
-               eventListener.onCameraPreviewReady();
-            }
-        }.start();
+        if (firstCall == true) {
+            new Thread() {
+                public void run() {
+                    eventListener.onCameraPreviewReady();
+                }
+            }.start();
+        }
 
         final FrameLayout frameContainerLayout = (FrameLayout) view.findViewById(getResources().getIdentifier("frame_container", "id", appResourcesPackage));
         ViewTreeObserver viewTreeObserver = frameContainerLayout.getViewTreeObserver();
@@ -214,11 +222,16 @@ public class CameraActivity extends Fragment {
                 public void onGlobalLayout() {
                     frameContainerLayout.getViewTreeObserver().removeGlobalOnLayoutListener(this);
                     frameContainerLayout.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
-                    final RelativeLayout frameCamContainerLayout = (RelativeLayout) view.findViewById(getResources().getIdentifier("frame_camera_cont", "id", appResourcesPackage));
-                    
-                    FrameLayout.LayoutParams camViewLayout = new FrameLayout.LayoutParams(frameContainerLayout.getWidth(), frameContainerLayout.getHeight());
-                    camViewLayout.gravity = Gravity.CENTER_HORIZONTAL | Gravity.CENTER_VERTICAL;
-                    frameCamContainerLayout.setLayoutParams(camViewLayout);
+                    try {
+                        final RelativeLayout frameCamContainerLayout = (RelativeLayout) view.findViewById(getResources().getIdentifier("frame_camera_cont", "id", appResourcesPackage));
+                        FrameLayout.LayoutParams camViewLayout = new FrameLayout.LayoutParams(frameContainerLayout.getWidth(), frameContainerLayout.getHeight());
+                        camViewLayout.gravity = Gravity.CENTER_HORIZONTAL | Gravity.CENTER_VERTICAL;
+                        frameCamContainerLayout.setLayoutParams(camViewLayout);
+                    } catch(IllegalStateException e) {
+                        sendCameraDebugMessage("IllegalStateException on getResources(): " + e.getMessage(),1);
+                    } catch(Exception e) {
+                        sendCameraDebugMessage("Exception in onGlobalLayout(): " + e.getMessage(),1);
+                    }
                 }
             });
         }
@@ -526,9 +539,6 @@ public class CameraActivity extends Fragment {
     
     public void setCameraDebugMessageLogging(int level) {
         this.debugLevel = level;
-        if (mPreview != null) {
-            mPreview.debugLevel = level;
-        }
     }
     
     public void setZoom(int zoom) {
@@ -616,7 +626,6 @@ public class CameraActivity extends Fragment {
                     }
                 }
             }
-            
         }
         
         private void reportOrientationChanged(final int normalizedRotation) {
@@ -685,10 +694,9 @@ public class CameraActivity extends Fragment {
 class Preview extends RelativeLayout implements SurfaceHolder.Callback {
     private final String TAG = "Preview";
     
-    public CameraActivity.CameraPreviewListener mPreviewListener;
+    public CameraActivity mCameraActivity;  // For access to sendCameraDebugMessage() callback
     public int zoomLevel;
     public int flashMode;
-    public int debugLevel;
     
     CustomSurfaceView mSurfaceView;
     SurfaceHolder mHolder;
@@ -716,16 +724,6 @@ class Preview extends RelativeLayout implements SurfaceHolder.Callback {
         mHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
     }
     
-    public void sendCameraDebugMessage(final String msg, final int requestLevel) {
-        if (requestLevel == 0 || (requestLevel == 1 && this.debugLevel == 1)) {
-            new Thread() {
-                public void run() {
-                    mPreviewListener.onCameraDebugMessage(msg);
-                }
-            }.start();
-        }
-    }
-
     public void setCamera(Camera camera, int cameraId) {
         mCamera = camera;
         this.cameraId = cameraId;
@@ -748,13 +746,13 @@ class Preview extends RelativeLayout implements SurfaceHolder.Callback {
             
             Log.d(TAG, "setting camera in FOCUS MODE CONTINUOUS PICTURE");
             if (params.getSupportedFocusModes().contains(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE)) {
-                sendCameraDebugMessage("Setting camera in FOCUS_MODE_CONTINUOUS_PICTURE",1);
+                mCameraActivity.sendCameraDebugMessage("Setting camera in FOCUS_MODE_CONTINUOUS_PICTURE",1);
                 params.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE);
             } else if (params.getSupportedFocusModes().contains(Camera.Parameters.FOCUS_MODE_AUTO)) {
-                sendCameraDebugMessage("Setting camera in FOCUS_MODE_AUTO",1);
+                mCameraActivity.sendCameraDebugMessage("Setting camera in FOCUS_MODE_AUTO",1);
                 params.setFocusMode(Camera.Parameters.FOCUS_MODE_AUTO);
             } else {
-                sendCameraDebugMessage("ERROR: No Supported Focus Modes detected on camera.",1);
+                mCameraActivity.sendCameraDebugMessage("ERROR: No Supported Focus Modes detected on camera.",1);
             }
             
             Log.d(TAG, "setting camera flash mode to " + this.flashMode + " as requested.");

@@ -30,5 +30,8 @@
 @property BOOL tapToTakePicture;
 @property (nonatomic) long zoomLevel;
 @property (nonatomic, assign) id delegate;
+@property (nonatomic) NSString *onRenderOrientationChangeHandlerId;
+@property (nonatomic, assign) id commandDelegate;
+@property (nonatomic) UIDeviceOrientation pictureOrientation;
 
 @end
