@@ -212,13 +212,14 @@ cordova.plugins.camerapreview.setOnOrientationChangeHandler(function (result) {
 console.log( 'Detected Device Orientation Change. Result: ' + result[0] );
 });
 
-
+```
 
 <b>camerapreview.setCameraOrientation(orientation)</b><br/>
 <info>Set the default orientation of the camera, this is important if the camera were started in FaceUp, FaceDown, or Unknown orientation values that could be returned from the device.  Set this to match the starting orientation of your ui camera preview overlay, default is portrait.</info><br/>
 
 ```
 cordova.plugins.camerapreview.setCameraOrientation(orientation);
+
 ```
 
 <b>switchCamera()</b><br/>
