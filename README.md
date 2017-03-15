@@ -23,24 +23,35 @@ Published for testing integration specifically targeting the Meteor JavaScript A
   <li>Maintain HTML interactivity.</li>
 </ul>
 
-<p><b>Version 0.0.16</b></p>
+<p><b>Version 0.0.17</b></p>
 
 <p><b>Installation:</b></p>
 
 ```
 cordova plugin add https://github.com/clariontools/CordovaCameraPreview.git
+
+  or
+
+ionic plugin add https://github.com/clariontools/CordovaCameraPreview.git
 ```
 
 <b>Phonegap Build:</b><br/>
 
 ```
-<gap:plugin name="com.clariontools.camerapreview" version="0.0.16" source="plugins.cordova.io" />
+<gap:plugin name="com.clariontools.camerapreview" version="0.0.17" source="plugins.cordova.io" />
+```
+
+<b>METEOR:</b><br/>
+
+```
+meteor add cordova:com.clariontools.camerapreview@https://github.com/clariontools/CordovaCameraPreview.git#[latest_commit_id]
+
 ```
 
 <p><b>Methods:</b></p>
 
 
-  <b>startCamera(rect, defaultCamera, tapEnabled, dragEnabled, toBack)</b><br/>
+  <b>startCamera(rect, defaultCamera, toBack, maxCaptureLength, rotation, debugLevel, alpha, prefix)</b><br/>
   <info>
   	Starts the camera preview instance.
   	<br/>
@@ -67,14 +78,15 @@ var deviceRotation = cordova.plugins.camerapreview.ROTATION_FREE; // (optional)
   // cordova.plugins.camerapreview.ROTATION_PORTRAIT_UPSIDE_DOWN
   // cordova.plugins.camerapreview.ROTATION_LANDSCAPE_LEFT
 
+var debugLevel = 0; // only send NOPIC: messages back to setOnCameraDebugMessageHandler(callback) function value 1 enables all active plugin debug messages
 var alpha = 1.0 // alpha applied only when toBack = false default 1.0 (optional)
 var prefix = 'pic-' // adds prefix to the .jpg filename default is 'picture' (optional)
 
-cordova.plugins.camerapreview.startCamera(rect, defaultCamera, toBack, maxCaptureLength, rotation, alpha, prefix);
+cordova.plugins.camerapreview.startCamera(rect, defaultCamera, toBack, maxCaptureLength, rotation, debugLevel, alpha, prefix);
 
 // or if called with a JavaScript promise:
 
-var startCameraPromise = cordova.plugins.camerapreview.startCamera(rect, defaultCamera, toBack, maxCaptureLength, rotation, alpha, prefix);
+var startCameraPromise = cordova.plugins.camerapreview.startCamera(rect, defaultCamera, toBack, maxCaptureLength, rotation, debugLevel, alpha, prefix);
 
 startCameraPromise.then(function (result) {
     console.log('Result from startCamera: ' + result);

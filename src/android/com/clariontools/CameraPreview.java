@@ -129,32 +129,42 @@ public class CameraPreview extends CordovaPlugin implements CameraActivity.Camer
             return false;
         }
         fragment = new CameraActivity();
+
+        try {
+            // get args that are used to set fragment variables important to do this very early
+            // and not on another thread, so other methods can access set values when called
+            String defaultCamera = args.getString(4);
+            int maxCaptureLength = args.isNull(6) ? 0 : args.getInt(6);
+            DisplayMetrics metrics = cordova.getActivity().getResources().getDisplayMetrics();
+            int x = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, args.getInt(0), metrics);
+            int y = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, args.getInt(1), metrics);
+            int width = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, args.getInt(2), metrics);
+            int height = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, args.getInt(3), metrics);
+            int lockRotation = args.isNull(7) ? -1 : args.getInt(7);
+            int debugLevel = args.isNull(8) ? 0 : args.getInt(8);
+            String filePrefix = args.isNull(10) ? "picture" : args.getString(9);
+            
+            fragment.defaultCamera = defaultCamera;
+            fragment.maxCaptureLength = maxCaptureLength;
+            fragment.setRect(x, y, width, height);
+            fragment.lockRotation = lockRotation;
+            fragment.filePrefix = filePrefix;
+            fragment.setCameraDebugMessageLogging(debugLevel);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
         fragment.setEventListener(this);
         
         cordova.getActivity().runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                
                 try {
-                    DisplayMetrics metrics = cordova.getActivity().getResources().getDisplayMetrics();
-                    int x = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, args.getInt(0), metrics);
-                    int y = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, args.getInt(1), metrics);
-                    int width = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, args.getInt(2), metrics);
-                    int height = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, args.getInt(3), metrics);
-                    String defaultCamera = args.getString(4);
+                    // get args that are used for the container layout.
                     Boolean toBack = args.getBoolean(5);
-                    int maxCaptureLength = args.isNull(6) ? 0 : args.getInt(6);
-                    int lockRotation = args.isNull(7) ? -1 : args.getInt(7);
-                    float containerAlpha = args.isNull(8) ? 1.0f : Float.parseFloat(args.getString(8));
-                    String filePrefix = args.isNull(9) ? "picture" : args.getString(9);
+                    float containerAlpha = args.isNull(9) ? 1.0f : Float.parseFloat(args.getString(8));
                     
-                    fragment.defaultCamera = defaultCamera;
-                    fragment.maxCaptureLength = maxCaptureLength;
-                    fragment.setRect(x, y, width, height);
-                    fragment.lockRotation = lockRotation;
-                    fragment.filePrefix = filePrefix;
-                    
-                    //create or update the layout params for the container view
+                    // create or update the layout params for the container view
                     boolean containerFound = true;
                     FrameLayout containerView = (FrameLayout)cordova.getActivity().findViewById(containerViewId);
                     if (containerView == null) {

@@ -42,8 +42,9 @@
         BOOL toBack = (BOOL)[command.arguments[5] boolValue];
         self.maxCaptureLength = ([command.arguments[6] isEqual:[NSNull null]]) ? 0 : (long)[command.arguments[6] integerValue];
         self.lockOrientation = ([command.arguments[7] isEqual:[NSNull null]]) ? [CameraPreview fromRotation: -1] : [CameraPreview fromRotation: (NSInteger)[command.arguments[7] integerValue]];
-        CGFloat containerAlpha = ([command.arguments[8] isEqual:[NSNull null]]) ? 1.0 : (CGFloat)[command.arguments[8] floatValue];
-        self.filePrefix = ([command.arguments[9] isEqual:[NSNull null]]) ? @"picture" : command.arguments[9];
+        self.debugLevel = ([command.arguments[8] isEqual:[NSNull null]]) ? 0 : (NSInteger)[command.arguments[8] integerValue];
+        CGFloat containerAlpha = ([command.arguments[9] isEqual:[NSNull null]]) ? 1.0 : (CGFloat)[command.arguments[9] floatValue];
+        self.filePrefix = ([command.arguments[10] isEqual:[NSNull null]]) ? @"picture" : command.arguments[10];
         
         //NSLog(@"maxCaptureLength: %ld", self.maxCaptureLength);
         //NSLog(@"lockOrientation: %ld", self.lockOrientation);
@@ -521,17 +522,6 @@
                 CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsArray:params];
                 [pluginResult setKeepCallbackAsBool:true];
                 [self.commandDelegate sendPluginResult:pluginResult callbackId:self.onPictureTakenHandlerId];
-                
-                // for testing...
-                //NSMutableArray *params = [[NSMutableArray alloc] init];
-                //CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsArray:params];
-                [pluginResult setKeepCallbackAsBool:true];
-                [self.commandDelegate sendPluginResult:pluginResult callbackId:self.onCameraDebugMessageHandlerId];
-                
-                //CDVPluginResult *pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsArray:params];
-                [pluginResult setKeepCallbackAsBool:true];
-                [self.commandDelegate sendPluginResult:pluginResult callbackId:self.onOrientationChangeHandlerId];
-
             });
         }
     }];

@@ -35,12 +35,15 @@ CameraPreview.setOnCameraDebugMessageHandler = function(onCameraDebugMessage) {
 
 //@param rect {x: 0, y: 0, width: 100, height:100}
 //@param defaultCamera "front" | "back"
-CameraPreview.startCamera = function(rect, defaultCamera, toBack, maxCaptureLength, rotation, alpha, prefix) {
+CameraPreview.startCamera = function(rect, defaultCamera, toBack, maxCaptureLength, rotation, debugLevel, alpha, prefix) {
+    if (typeof(debugLevel) === 'undefined') {
+        debugLevel = 0;
+    }
     if (typeof(alpha) === 'undefined') {
         alpha = 1;
     }
     return new Promise( function(resolve, reject) {
-                       exec(resolve, reject, PLUGIN_NAME, "startCamera", [rect.x, rect.y, rect.width, rect.height, defaultCamera, !!toBack, maxCaptureLength, rotation, alpha, prefix]);
+                       exec(resolve, reject, PLUGIN_NAME, "startCamera", [rect.x, rect.y, rect.width, rect.height, defaultCamera, !!toBack, maxCaptureLength, rotation, debugLevel, alpha, prefix]);
                        });
 };
 

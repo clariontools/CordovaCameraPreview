@@ -110,7 +110,6 @@ public class CameraActivity extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         appResourcesPackage = getActivity().getPackageName();
-        this.debugLevel = 1;
         
         // Inflate the layout for this fragment
         view = inflater.inflate(getResources().getIdentifier("camera_activity", "layout", appResourcesPackage), container, false);
@@ -862,14 +861,18 @@ class Preview extends RelativeLayout implements SurfaceHolder.Callback {
             mPreviewSize = getOptimalImageSize(mSupportedPreviewSizes, width, height, null);
             LOG.d(TAG, "Set mPreviewSize from onMeasure Override width:" + mPreviewSize.width + " height:" + mPreviewSize.height);
         } else {
-            LOG.d(TAG, "DID NOT SET mPreviewSize from onMeasure Override width:" + mPreviewSize.width + " height:" + mPreviewSize.height);
+            mCameraActivity.sendCameraDebugMessage("mSupportedPreviewSizes is null on call to onMeasure.",1);
+            LOG.d(TAG, "DID NOT SET mPreviewSize from onMeasure Override width:" + width + " height:" + height);
         }
         
         if (mSupportedPictureSizes != null) {
-            mPictureSize = getOptimalImageSize(mSupportedPictureSizes, width, height, mPreviewSize);
-            LOG.d(TAG, "Set mPictureSize from onMeasure Override width:" + mPictureSize.width + " height:" + mPictureSize.height);
+            if (mPreviewSize != null) {
+                mPictureSize = getOptimalImageSize(mSupportedPictureSizes, width, height, mPreviewSize);
+                LOG.d(TAG, "Set mPictureSize from onMeasure Override width:" + mPictureSize.width + " height:" + mPictureSize.height);
+            }
         } else {
-            LOG.d(TAG, "DID NOT SET mPictureSize from onMeasure Override width:" + mPictureSize.width + " height:" + mPictureSize.height);
+            mCameraActivity.sendCameraDebugMessage("mSupportedPictureSizes is null on call to onMeasure.",1);
+            LOG.d(TAG, "DID NOT SET mPictureSize from onMeasure Override width:" + width + " height:" + height);
         }
     }
     
